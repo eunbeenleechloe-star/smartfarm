@@ -13,11 +13,24 @@ import {
 import { resolveProvinceBjdCodes } from "./shared/regionCode";
 
 /**
- * 농촌진흥청 국립농업과학원_토양검정 화학성 상세정보(pH·EC 실측값, BJD_Code로 지역 조회).
- * 농경지화학성 통계정보(V2)는 공식 기술명세서를 확보하지 못해 연동하지 않는다(CLAUDE.md 규칙 4).
+ * 농촌진흥청 국립농업과학원_토양검정 화학성 상세정보
+ * - pH·EC 실측값 조회
+ * - BJD_Code를 이용한 지역 조회
+ *
+ * 농경지화학성 통계정보(V2)는 공식 기술명세서를 확보하지 못해
+ * 현재 연동하지 않는다.
  */
-const SOIL_EXAM_LIST_URL = "https://apis.data.go.kr/1390802/SoilEnviron/SoilExam/getSoilExamList";
-/** 농촌진흥청 국립농업과학원_토양도 기반 토양특성 상세정보(V2). PNU_Code 필요. */
+const SOIL_EXAM_LIST_URL =
+  "https://apis.data.go.kr/1390802/SoilEnviron/SoilExam/getSoilExamList";
+
+/**
+ * 농촌진흥청 국립농업과학원_토양도 기반 토양특성 상세정보(V2)
+ * - 토성
+ * - 배수등급
+ * - 유효토심
+ *
+ * 조회 시 PNU_Code가 필요하다.
+ */
 const SOIL_CHARAC_URL =
   "https://apis.data.go.kr/1390802/SoilEnviron/SoilCharac/V2/getSoilCharacter";
 
@@ -28,7 +41,13 @@ interface SoilExamItem {
   ec: number | null;
 }
 
-async function fetchSoilExamList(serviceKey: string, bjdCode: string): Promise<SoilExamItem[]> {
+/**
+ * 지역 법정동코드를 기준으로 토양검정 화학성 정보를 조회한다.
+ */
+async function fetchSoilExamList(
+  serviceKey: string,
+  bjdCode: string,
+): Promise<SoilExamItem[]> {
   const xml = await fetchPublicApiXml(SOIL_EXAM_LIST_URL, {
     serviceKey,
     BJD_Code: bjdCode,
@@ -37,10 +56,16 @@ async function fetchSoilExamList(serviceKey: string, bjdCode: string): Promise<S
   });
 
   const status = parseXmlResultStatus(xml);
-  if (isNoDataResult(status)) return [];
+
+  if (isNoDataResult(status)) {
+    return [];
+  }
+
   if (!status.ok) {
     throw new PublicApiError(
-      `토양검정 화학성 API 오류: ${status.code ?? "UNKNOWN"} ${status.message ?? ""}`,
+      `토양검정 화학성 API 오류: ${
+        status.code ?? "UNKNOWN"
+      } ${status.message ?? ""}`,
     );
   }
 
@@ -52,7 +77,10 @@ async function fetchSoilExamList(serviceKey: string, bjdCode: string): Promise<S
   }));
 }
 
-/** 배수등급 코드(01~06). 99/미확인은 null로 유지한다. */
+/**
+ * 배수등급 코드.
+ * 99 또는 미확인 값은 null로 유지한다.
+ */
 const DRAINAGE_LABEL: Record<string, string> = {
   "01": "매우양호",
   "02": "양호",
@@ -62,7 +90,10 @@ const DRAINAGE_LABEL: Record<string, string> = {
   "06": "매우불량",
 };
 
-/** 표토토성 코드(01~09). 99/미확인은 null로 유지한다. */
+/**
+ * 표토 토성 코드.
+ * 99 또는 미확인 값은 null로 유지한다.
+ */
 const TEXTURE_LABEL: Record<string, string> = {
   "01": "양질조사토",
   "02": "양질세사토",
@@ -75,7 +106,17 @@ const TEXTURE_LABEL: Record<string, string> = {
   "09": "식양토",
 };
 
-/** 유효토심 코드는 "0-25cm"류의 구간이라 하한값만 대표값으로 쓴다(임의 추정 아님, 공식 코드 정의의 하한). */
+/**
+ * 유효토심 코드의 구간 하한값.
+ *
+ * 예:
+ * 01 → 0~25cm
+ * 02 → 25~50cm
+ * 03 → 50~100cm
+ * 04 → 100cm 이상
+ *
+ * 공식 코드 정의의 하한값을 대표값으로 사용한다.
+ */
 const EFFECTIVE_DEPTH_MIN_CM: Record<string, number> = {
   "01": 0,
   "02": 25,
@@ -89,37 +130,79 @@ interface SoilCharacResult {
   effectiveDepthCm: number | null;
 }
 
+/**
+ * PNU 코드를 기준으로 토양 물리 특성을 조회한다.
+ */
 async function fetchSoilCharacByPnu(
   serviceKey: string,
   pnuCode: string,
 ): Promise<SoilCharacResult> {
-  const xml = await fetchPublicApiXml(SOIL_CHARAC_URL, { serviceKey, PNU_Code: pnuCode });
+  const xml = await fetchPublicApiXml(SOIL_CHARAC_URL, {
+    serviceKey,
+    PNU_Code: pnuCode,
+  });
 
   const status = parseXmlResultStatus(xml);
-  if (isNoDataResult(status) || !status.ok) {
-    if (!status.ok && !isNoDataResult(status)) {
-      throw new PublicApiError(
-        `토양도 기반 토양특성 API 오류: ${status.code ?? "UNKNOWN"} ${status.message ?? ""}`,
-      );
-    }
-    return { texture: null, drainage: null, effectiveDepthCm: null };
+
+  if (isNoDataResult(status)) {
+    return {
+      texture: null,
+      drainage: null,
+      effectiveDepthCm: null,
+    };
+  }
+
+  if (!status.ok) {
+    throw new PublicApiError(
+      `토양도 기반 토양특성 API 오류: ${
+        status.code ?? "UNKNOWN"
+      } ${status.message ?? ""}`,
+    );
   }
 
   const item = parseXmlItems(xml)[0];
-  if (!item) return { texture: null, drainage: null, effectiveDepthCm: null };
+
+  if (!item) {
+    return {
+      texture: null,
+      drainage: null,
+      effectiveDepthCm: null,
+    };
+  }
 
   return {
-    texture: TEXTURE_LABEL[item.Surtture_Code ?? ""] ?? null,
-    drainage: DRAINAGE_LABEL[item.Soildra_Code ?? ""] ?? null,
-    effectiveDepthCm: EFFECTIVE_DEPTH_MIN_CM[item.Vldsoildep_Code ?? ""] ?? null,
+    texture:
+      TEXTURE_LABEL[item.Surtture_Code ?? ""] ?? null,
+    drainage:
+      DRAINAGE_LABEL[item.Soildra_Code ?? ""] ?? null,
+    effectiveDepthCm:
+      EFFECTIVE_DEPTH_MIN_CM[item.Vldsoildep_Code ?? ""] ??
+      null,
   };
 }
 
+/**
+ * 숫자 배열의 평균값을 계산한다.
+ * 값이 없으면 null을 반환한다.
+ */
 function average(values: number[]): number | null {
-  return values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : null;
+  if (values.length === 0) {
+    return null;
+  }
+
+  return (
+    values.reduce((sum, value) => sum + value, 0) /
+    values.length
+  );
 }
 
-function mockSoilWithReason(location: LocationInput, reason: string): SoilData {
+/**
+ * 실제 API를 사용할 수 없을 때 mock 토양 데이터와 이유를 함께 반환한다.
+ */
+function mockSoilWithReason(
+  location: LocationInput,
+  reason: string,
+): SoilData {
   return {
     ...mockSoil,
     source: `${mockSoil.source} (${location.address}, ${reason})`,
@@ -127,11 +210,26 @@ function mockSoilWithReason(location: LocationInput, reason: string): SoilData {
 }
 
 /**
- * API 담당자는 이 함수 내부만 구현하면 됩니다.
- * pH/EC/토성 값이 없으면 null을 유지하세요.
+ * 지역 토양 정보를 조회한다.
+ *
+ * 반환 데이터:
+ * - pH
+ * - EC
+ * - 토성
+ * - 배수등급
+ * - 유효토심
+ *
+ * pH·EC는 해당 지역 토양검정 표본의 평균값이며,
+ * 토성·배수·유효토심은 조회된 표본 중 대표 PNU를 이용한 참고값이다.
+ *
+ * 값이 없으면 임의로 생성하지 않고 null을 유지한다.
  */
-export async function getSoil(location: LocationInput): Promise<SoilData> {
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+export async function getSoil(
+  location: LocationInput,
+): Promise<SoilData> {
+  const useMock =
+    process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+
   const serviceKey = firstEnv(
     "SOIL_API_KEY",
     "SOIL_CHEMISTRY_API_KEY",
@@ -141,73 +239,148 @@ export async function getSoil(location: LocationInput): Promise<SoilData> {
   if (useMock) {
     return mockSoilWithReason(location, "mock 모드");
   }
+
   if (!serviceKey) {
-    return mockSoilWithReason(location, "SOIL_API_KEY 미설정");
+    return mockSoilWithReason(
+      location,
+      "토양 API 인증키 미설정",
+    );
   }
 
   const bjdCodes = resolveProvinceBjdCodes(location);
+
   if (!bjdCodes) {
-    return mockSoilWithReason(location, "법정동코드(시도) 확인 불가");
+    return mockSoilWithReason(
+      location,
+      "법정동코드 확인 불가",
+    );
   }
 
-  const key = normalizeServiceKey(serviceKey);
+  const normalizedKey = normalizeServiceKey(serviceKey);
 
   try {
     let items: SoilExamItem[] = [];
+
     for (const bjdCode of bjdCodes) {
-      items = await fetchSoilExamList(key, bjdCode);
-      if (items.length > 0) break;
-    }
-    if (items.length === 0) {
-      return mockSoilWithReason(location, "토양검정 화학성 조회 결과 없음(OK_NO_DATA_ERROR)");
+      items = await fetchSoilExamList(
+        normalizedKey,
+        bjdCode,
+      );
+
+      if (items.length > 0) {
+        break;
+      }
     }
 
-    const phValues = items.map((item) => item.ph).filter((v): v is number => v !== null);
-    const ecValues = items.map((item) => item.ec).filter((v): v is number => v !== null);
+    if (items.length === 0) {
+      return mockSoilWithReason(
+        location,
+        "토양검정 화학성 조회 결과 없음",
+      );
+    }
+
+    const phValues = items
+      .map((item) => item.ph)
+      .filter(
+        (value): value is number => value !== null,
+      );
+
+    const ecValues = items
+      .map((item) => item.ec)
+      .filter(
+        (value): value is number => value !== null,
+      );
+
     const latestExamDay = items
       .map((item) => item.examDay)
-      .filter((v): v is string => !!v)
+      .filter(
+        (value): value is string => Boolean(value),
+      )
       .sort()
       .at(-1);
 
-    // 토양도 기반 토양특성(V2)은 PNU_Code가 필요하다. 조회된 표본 중 하나의 PNU를
-    // 해당 지역의 대표 필지로 사용한다(사용자가 지정한 정확한 필지가 아님을 source에 명시).
     let characteristics: SoilCharacResult = {
       texture: null,
       drainage: null,
       effectiveDepthCm: null,
     };
-    const representativePnu = items.find((item) => item.pnuCode)?.pnuCode;
+
+    /**
+     * 조회된 표본 중 PNU가 존재하는 첫 항목을
+     * 해당 지역의 대표 필지로 사용한다.
+     *
+     * 사용자가 지정한 정확한 필지가 아니므로
+     * source에 대표 필지 기준임을 명시한다.
+     */
+    const representativePnu = items.find(
+      (item) => Boolean(item.pnuCode),
+    )?.pnuCode;
+
     if (representativePnu) {
       try {
-        characteristics = await fetchSoilCharacByPnu(key, representativePnu);
+        characteristics =
+          await fetchSoilCharacByPnu(
+            normalizedKey,
+            representativePnu,
+          );
       } catch {
-        // 토성/배수/유효토심 조회 실패는 pH/EC 실측값까지 mock으로 되돌리지 않고 null로만 남긴다.
+        /**
+         * 물리적 토양정보 조회에 실패해도
+         * 이미 조회한 pH·EC 정보는 유지한다.
+         */
+        characteristics = {
+          texture: null,
+          drainage: null,
+          effectiveDepthCm: null,
+        };
       }
     }
+
+    const observedAt =
+      latestExamDay &&
+      /^\d{8}$/.test(latestExamDay)
+        ? `${latestExamDay.slice(
+            0,
+            4,
+          )}-${latestExamDay.slice(
+            4,
+            6,
+          )}-${latestExamDay.slice(6, 8)}`
+        : null;
 
     return {
       ph: average(phValues),
       ecDsM: average(ecValues),
       texture: characteristics.texture,
       drainage: characteristics.drainage,
-      effectiveDepthCm: characteristics.effectiveDepthCm,
+      effectiveDepthCm:
+        characteristics.effectiveDepthCm,
+
+      /**
+       * 특정 필지의 직접 측정값이 아니라
+       * 지역 표본을 활용한 결과이므로 city로 표시한다.
+       */
       dataLevel: "city",
+
       source:
-        `농촌진흥청 국립농업과학원_토양검정 화학성 상세정보(pH·EC, 표본 ${items.length}개 평균)` +
+        `농촌진흥청 국립농업과학원 토양검정 화학성 상세정보` +
+        ` (pH·EC, 표본 ${items.length}개 평균)` +
         (representativePnu
-          ? " + 토양도 기반 토양특성 상세정보(대표 필지 기준 토성/배수등급/유효토심)"
+          ? " + 토양도 기반 토양특성 상세정보(대표 필지 기준)"
           : "") +
         ` - ${location.address}`,
-      observedAt: latestExamDay
-        ? `${latestExamDay.slice(0, 4)}-${latestExamDay.slice(4, 6)}-${latestExamDay.slice(6, 8)}`
-        : null,
+
+      observedAt,
       isMock: false,
     };
   } catch (error) {
     return mockSoilWithReason(
       location,
-      `실제 API 실패: ${error instanceof Error ? error.message : "Unknown error"}`,
+      `실제 API 실패: ${
+        error instanceof Error
+          ? error.message
+          : "Unknown error"
+      }`,
     );
   }
 }

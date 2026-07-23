@@ -133,3 +133,135 @@ export interface AnalysisResult {
   sources: string[];
   generatedAt: string;
 }
+
+export type PestRiskLevel = "low" | "medium" | "high";
+
+export interface PestItem {
+  diseaseName: string | null;
+  pestName: string | null;
+  riskLevel: PestRiskLevel | null;
+  prevention: string | null;
+  response: string | null;
+}
+
+export interface NormalizedPestData {
+  crop: CropId;
+  items: PestItem[];
+  source: string;
+  observedAt: string;
+  isMock: boolean;
+}
+
+/** NCPMS 병 검색 서비스(SVC01) 정규화 결과. 증상/예방법/방제법은 이 API에 없으므로 포함하지 않는다. */
+export interface NormalizedDiseaseSearchItem {
+  id: string;
+  cropName: string | null;
+  nameKor: string;
+  nameChn: string | null;
+  nameEng: string | null;
+  thumbnailUrl: string | null;
+  originalImageUrl: string | null;
+  source: "NCPMS";
+}
+
+/** NCPMS 병 상세정보 서비스(SVC05) 정규화 결과. */
+export interface NormalizedDiseaseDetail {
+  id: string;
+
+  cropName: string | null;
+
+  nameKor: string;
+  nameChn: string | null;
+  nameEng: string | null;
+
+  infectionRoute: string | null;
+  developmentCondition: string | null;
+  symptoms: string | null;
+
+  preventionMethod: string | null;
+  biologicalControlMethod: string | null;
+  chemicalControlMethod: string | null;
+
+  pathogenNames: string[];
+  pathogenFeatures: string[];
+
+  pathogenImages: {
+    url: string;
+    title: string | null;
+  }[];
+
+  diseaseImages: {
+    url: string;
+    title: string | null;
+    relatedField: string | null;
+  }[];
+
+  etc: string | null;
+
+  source: "NCPMS";
+}
+
+/** NCPMS 해충 검색 서비스(SVC03) 정규화 결과. 증상/방제법은 이 API에 없으므로 포함하지 않는다. */
+export interface NormalizedInsectSearchItem {
+  id: string;
+  cropName: string | null;
+  nameKor: string;
+  speciesName: string | null;
+  thumbnailUrl: string | null;
+  originalImageUrl: string | null;
+  source: "NCPMS";
+}
+
+/** NCPMS 해충 상세정보 서비스(SVC07) 정규화 결과. */
+export interface NormalizedInsectDetail {
+  id: string;
+
+  cropName: string | null;
+
+  orderName: string | null;
+  genusName: string | null;
+  familyName: string | null;
+
+  speciesName: string | null;
+  speciesNameKor: string;
+
+  subspeciesName: string | null;
+  subgenusName: string | null;
+
+  author: string | null;
+  authorYear: string | null;
+
+  distributionInfo: string | null;
+  morphologyInfo: string | null;
+  quarantineInfo: string | null;
+  ecologyInfo: string | null;
+  damageInfo: string | null;
+
+  preventionMethod: string | null;
+  biologicalControlMethod: string | null;
+  chemicalControlMethod: string | null;
+
+  speciesPhotos: {
+    url: string;
+    title: string | null;
+  }[];
+
+  pestImages: {
+    url: string;
+    title: string | null;
+    relatedField: string | null;
+  }[];
+
+  naturalEnemies: {
+    id: string | null;
+    nameKor: string | null;
+    speciesName: string | null;
+    orderName: string | null;
+    familyName: string | null;
+    imageUrl: string | null;
+  }[];
+
+  detailLink: string | null;
+
+  source: "NCPMS";
+}
