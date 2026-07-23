@@ -86,7 +86,7 @@ function maxSeverity(a: RiskSeverity, b: RiskSeverity): RiskSeverity {
 }
 
 /** 생육단계 키(coldRisks[].stage)를 화면에 보여주기 좋은 한국어로 바꾼다. 새 수치는 아니다. */
-const STAGE_LABELS: Record<string, string> = {
+export const STAGE_LABELS: Record<string, string> = {
   winterTree: "겨울철 지상부",
   winterRoot: "겨울철 지하부",
   flowering: "개화기",
@@ -99,7 +99,7 @@ const STAGE_LABELS: Record<string, string> = {
   growth: "생육기",
 };
 
-function getStageLabel(stage: string): string {
+export function getStageLabel(stage: string): string {
   return STAGE_LABELS[stage] ?? stage;
 }
 
