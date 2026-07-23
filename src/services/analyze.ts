@@ -1,83 +1,35 @@
-import { cropStandards } from "@/data/cropStandards";
-import { calculateScoreDetails, weightedAverage } from "@/lib/scoring";
-import { detectRisks } from "@/lib/risk";
+import { analyzeCrop, type CropAnalysisResult } from "@/services/cropAnalysis";
 import { getFertilizer } from "@/services/fertilizer";
 import { getSoil } from "@/services/soil";
 import { getWeather } from "@/services/weather";
-import type { AnalysisInput, AnalysisResult } from "@/types/analysis";
+import type { AnalysisInput } from "@/types/analysis";
 
+/**
+ * 지역·작물 분석의 진입점.
+ *
+ * 기상/토양/비료 데이터를 조회한 뒤 `cropAnalysis.ts`(analyzeCrop)에 그대로 넘긴다.
+ * 점수·위험 계산과 최종 결과 조합은 `cropAnalysis.ts`가 단일 기준으로 담당하며,
+ * 이 함수는 데이터 조회와 위임만 한다(계산 로직 없음).
+ *
+ * 예전에는 이 파일이 cropScoring/cropRiskAnalyzer 결과를 레거시 AnalysisResult
+ * 형태(weatherScore/soilScore/scoreDetails 변환 등)로 직접 조합했으나, 그 로직은
+ * cropAnalysis.ts로 이전되어 여기서는 더 이상 재구현하지 않는다.
+ */
 export async function analyzeFarm(
   input: AnalysisInput,
-): Promise<AnalysisResult> {
+): Promise<CropAnalysisResult> {
   const [weather, soil, fertilizer] = await Promise.all([
     getWeather(input.location),
     getSoil(input.location),
     getFertilizer(input.crop, input.location, input.areaM2),
   ]);
 
-  const standard = cropStandards[input.crop];
-  const scoreDetails = calculateScoreDetails({
-    standard,
-    weather,
-    soil,
-  });
-
-  const weatherVariables = new Set(["temperature", "rainfall"]);
-  const soilVariables = new Set(["soilPh", "soilEc"]);
-
-  const weatherScore = weightedAverage(
-    scoreDetails
-      .filter((item) => weatherVariables.has(item.variable))
-      .map(({ score, weight }) => ({ score, weight })),
-  );
-
-  const soilScore = weightedAverage(
-    scoreDetails
-      .filter((item) => soilVariables.has(item.variable))
-      .map(({ score, weight }) => ({ score, weight })),
-  );
-
-  const overallScore = weightedAverage(
-    scoreDetails.map(({ score, weight }) => ({ score, weight })),
-  );
-
-  const availableCount = scoreDetails.filter(
-    (item) => item.score !== null,
-  ).length;
-
-  const baseConfidence =
-    (availableCount / Math.max(scoreDetails.length, 1)) * 100;
-  const sourcePenalty =
-    (weather.isMock ? 20 : 0) +
-    (soil.isMock ? 20 : 0) +
-    (soil.dataLevel === "sample" ? 10 : 0);
-
-  const confidenceScore = Math.max(
-    0,
-    Math.round(baseConfidence - sourcePenalty),
-  );
-
-  const risks = detectRisks(standard, weather);
-
-  return {
-    location: input.location.address,
-    crop: input.crop,
-    overallScore,
-    weatherScore,
-    soilScore,
-    confidenceScore,
-    scoreDetails,
-    risks,
+  return analyzeCrop({
+    cropId: input.crop,
+    location: input.location,
+    growthStage: input.growthStage,
     weather,
     soil,
     fertilizer,
-    generatedGuide: null,
-    sources: [
-      ...standard.sources,
-      weather.source,
-      soil.source,
-      ...(fertilizer ? [fertilizer.source] : []),
-    ],
-    generatedAt: new Date().toISOString(),
-  };
+  });
 }

@@ -22,10 +22,18 @@ pH, EC, 토성, 배수등급, 유효토심을 SoilData로 정규화하고,
 LLM으로 처방량을 만들지 마.
 면적과 단위를 명확히 보존해줘.
 
-## 점수 담당
-`src/lib/scoring.ts`와 `src/lib/risk.ts`를 검토하고
-결측값 제외, 가중치 재정규화, 이탈 거리 반영이 올바른지 개선해줘.
-순수 함수 형태를 유지하고 테스트를 추가해줘.
+## 점수·위험 담당
+CLAUDE.md와 src/types/analysis.ts, src/data/cropResearchStandards.ts를 먼저 읽어줘.
+적합도 점수는 `src/lib/cropScoring.ts`(calculateCropScore, cropScoringWeights),
+예보 기반 위험은 `src/lib/cropRiskAnalyzer.ts`(analyzeCropRisks)를 검토하고
+결측값 제외, 작물별 가중치 재정규화, 이탈 거리 반영이 올바른지 개선해줘.
+두 모듈 다 `src/services/analyze.ts`에서 overallScore/weatherScore/soilScore/
+scoreDetails/risks의 원천으로 쓰이고 있으니, 반환 타입이나 필드를 바꾸면
+analyze.ts의 매핑 로직도 함께 확인해줘.
+순수 함수 형태를 유지하고 runCropScoringSelfChecks()/runCropRiskSelfChecks()에
+검증 케이스를 추가해줘.
+`src/lib/scoring.ts`는 weightedAverage만 남아 있고(다른 함수는 죽은 코드라 제거함),
+`src/lib/risk.ts`는 cropRiskAnalyzer.ts로 완전히 대체되어 삭제됐어 — 되살리지 마.
 
 ## 프론트 담당
 AnalysisResult 타입만 사용해서 입력 화면과 결과 화면을 구현해줘.
