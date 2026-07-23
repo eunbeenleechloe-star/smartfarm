@@ -1,5 +1,6 @@
 import type { DailyWeather, LocationInput, WeatherData } from "@/types/analysis";
 import { mockWeather } from "@/mocks/weather";
+import { getRequiredEnv } from "./env";
 
 const KMA_BASE_URL =
   "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
@@ -224,9 +225,16 @@ export async function getWeather(
   location: LocationInput,
 ): Promise<WeatherData> {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-  const apiKey = process.env.KMA_API_KEY;
+  let apiKey: string | null = null;
+  if (!useMock) {
+    try {
+      apiKey = getRequiredEnv("KMA_API_KEY");
+    } catch {
+      apiKey = null;
+    }
+  }
 
-  if (useMock || !apiKey) {
+  if (!apiKey) {
     return {
       ...mockWeather,
       source: `${mockWeather.source} (${location.address})`,

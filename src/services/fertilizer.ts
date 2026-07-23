@@ -4,6 +4,7 @@ import type {
   LocationInput,
 } from "@/types/analysis";
 import { mockFertilizer } from "@/mocks/fertilizer";
+import { getRequiredEnv } from "./env";
 
 /**
  * 비료 처방량을 LLM으로 생성하지 마세요.
@@ -15,8 +16,17 @@ export async function getFertilizer(
   areaM2?: number,
 ): Promise<FertilizerPrescription | null> {
   const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
+  let hasApiKey = false;
+  if (!useMock) {
+    try {
+      getRequiredEnv("FERTILIZER_API_KEY");
+      hasApiKey = true;
+    } catch {
+      hasApiKey = false;
+    }
+  }
 
-  if (useMock || !process.env.FERTILIZER_API_KEY) {
+  if (!hasApiKey) {
     const prescription = mockFertilizer[crop];
     if (!prescription) return null;
     return {
