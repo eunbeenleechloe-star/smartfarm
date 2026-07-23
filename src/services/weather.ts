@@ -1,264 +1,511 @@
-import type { DailyWeather, LocationInput, WeatherData } from "@/types/analysis";
+import type {
+  DailyWeather,
+  LocationInput,
+  WeatherData,
+} from "@/types/analysis";
 import { mockWeather } from "@/mocks/weather";
-import { getRequiredEnv } from "./env";
+import {
+  fetchPublicApiXml,
+  firstEnv,
+  kstParts,
+  normalizeServiceKey,
+  pad2,
+  parseFloatOrNull,
+  parseXmlItems,
+  parseXmlResultStatus,
+  PublicApiError,
+} from "./shared/publicApi";
+import { resolveKmaGrid } from "./shared/kmaGrid";
 
+/**
+ * 기상청 단기예보 조회서비스
+ * VilageFcstInfoService_2.0/getVilageFcst
+ *
+ * 환경변수:
+ * - KMA_API_KEY
+ * - WEATHER_API_KEY
+ *
+ * 두 환경변수 중 먼저 설정된 값을 사용한다.
+ */
 const KMA_BASE_URL =
   "https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst";
 
-// 기상청 단기예보 발표시각(KST): 02,05,08,11,14,17,20,23시. 실제 조회는 발표 후 약 10분부터 가능하다.
-const BASE_HOURS = [2, 5, 8, 11, 14, 17, 20, 23];
+/**
+ * 단기예보 발표 시각.
+ *
+ * 하루 8회 발표되며, 일반적으로 발표 약 10분 후부터
+ * 정상 조회할 수 있다.
+ */
+const BASE_TIMES = [
+  "0200",
+  "0500",
+  "0800",
+  "1100",
+  "1400",
+  "1700",
+  "2000",
+  "2300",
+] as const;
 
-interface KmaForecastItem {
+/**
+ * 현재 한국 시각을 기준으로 조회 가능한 가장 최근
+ * base_date와 base_time을 구한다.
+ *
+ * 발표 직후 데이터가 아직 준비되지 않은 상황을 피하기 위해
+ * 발표 시각에서 10분의 여유 시간을 둔다.
+ */
+function resolveBaseDateTime(
+  now: Date,
+): {
   baseDate: string;
   baseTime: string;
-  category: string;
-  fcstDate: string;
-  fcstTime: string;
-  fcstValue: string;
-  nx: number;
-  ny: number;
-}
+} {
+  const {
+    year,
+    month,
+    day,
+    hour,
+    minute,
+  } = kstParts(now);
 
-interface KmaResponse {
-  response: {
-    header: { resultCode: string; resultMsg: string };
-    body?: {
-      items?: { item: KmaForecastItem[] };
-    };
-  };
-}
+  const bufferedMinutes =
+    hour * 60 + minute - 10;
 
-function pad2(n: number): string {
-  return n.toString().padStart(2, "0");
-}
+  const slotMinutes = BASE_TIMES.map(
+    (time) =>
+      Number(time.slice(0, 2)) * 60 +
+      Number(time.slice(2)),
+  );
 
-/** 현재(KST) 기준으로 가장 최근에 발표되어 조회 가능한 base_date/base_time을 계산한다. */
-function getLatestBaseDateTime(now: Date): { baseDate: string; baseTime: string } {
-  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-  const hour = kst.getUTCHours();
-  const minute = kst.getUTCMinutes();
+  let selectedIndex = -1;
 
-  const base = new Date(kst);
-  let candidateHour = [...BASE_HOURS]
-    .reverse()
-    .find((h) => hour > h || (hour === h && minute >= 10));
-
-  if (candidateHour === undefined) {
-    // 00:00~02:09 사이는 전날 23시 발표를 사용한다.
-    base.setUTCDate(base.getUTCDate() - 1);
-    candidateHour = 23;
-  }
-  base.setUTCHours(candidateHour, 0, 0, 0);
-
-  const baseDate = `${base.getUTCFullYear()}${pad2(base.getUTCMonth() + 1)}${pad2(base.getUTCDate())}`;
-  const baseTime = `${pad2(candidateHour)}00`;
-  return { baseDate, baseTime };
-}
-
-/**
- * 위경도 -> 기상청 예보 격자(nx, ny) 변환.
- * 기상청이 배포하는 Lambert Conformal Conic 격자변환 공식을 그대로 사용한다.
- */
-function convertToGrid(lat: number, lon: number): { nx: number; ny: number } {
-  const RE = 6371.00877;
-  const GRID = 5.0;
-  const SLAT1 = (30.0 * Math.PI) / 180;
-  const SLAT2 = (60.0 * Math.PI) / 180;
-  const OLON = (126.0 * Math.PI) / 180;
-  const OLAT = (38.0 * Math.PI) / 180;
-  const XO = 43;
-  const YO = 136;
-
-  const re = RE / GRID;
-  const sn =
-    Math.log(Math.cos(SLAT1) / Math.cos(SLAT2)) /
-    Math.log(Math.tan(Math.PI * 0.25 + SLAT2 * 0.5) / Math.tan(Math.PI * 0.25 + SLAT1 * 0.5));
-  const sf = (Math.tan(Math.PI * 0.25 + SLAT1 * 0.5) ** sn * Math.cos(SLAT1)) / sn;
-  const ro = (re * sf) / Math.tan(Math.PI * 0.25 + OLAT * 0.5) ** sn;
-
-  const radLat = (lat * Math.PI) / 180;
-  const radLon = (lon * Math.PI) / 180;
-
-  const ra = (re * sf) / Math.tan(Math.PI * 0.25 + radLat * 0.5) ** sn;
-  let theta = radLon - OLON;
-  if (theta > Math.PI) theta -= 2 * Math.PI;
-  if (theta < -Math.PI) theta += 2 * Math.PI;
-  theta *= sn;
-
-  const nx = Math.floor(ra * Math.sin(theta) + XO + 0.5);
-  const ny = Math.floor(ro - ra * Math.cos(theta) + YO + 0.5);
-  return { nx, ny };
-}
-
-function resolveGrid(location: LocationInput): { nx: number; ny: number } | null {
-  if (location.nx !== undefined && location.ny !== undefined) {
-    return { nx: location.nx, ny: location.ny };
-  }
-  if (location.latitude !== undefined && location.longitude !== undefined) {
-    return convertToGrid(location.latitude, location.longitude);
-  }
-  return null;
-}
-
-function parseNumeric(value: string): number | null {
-  if (value.includes("없음")) return 0;
-  const num = parseFloat(value.replace(/[^0-9.]/g, ""));
-  return Number.isNaN(num) ? null : num;
-}
-
-function categoryValues(items: KmaForecastItem[], category: string): number[] {
-  return items
-    .filter((item) => item.category === category)
-    .map((item) => parseNumeric(item.fcstValue))
-    .filter((value): value is number => value !== null);
-}
-
-function toDateString(fcstDate: string): string {
-  return `${fcstDate.slice(0, 4)}-${fcstDate.slice(4, 6)}-${fcstDate.slice(6, 8)}`;
-}
-
-function average(values: number[]): number | null {
-  if (values.length === 0) return null;
-  return Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 10) / 10;
-}
-
-function sum(values: number[]): number | null {
-  if (values.length === 0) return null;
-  return Math.round(values.reduce((a, b) => a + b, 0) * 10) / 10;
-}
-
-function buildDailyWeather(date: string, items: KmaForecastItem[]): DailyWeather {
-  const tmp = categoryValues(items, "TMP");
-  const tmn = categoryValues(items, "TMN");
-  const tmx = categoryValues(items, "TMX");
-  const pcp = categoryValues(items, "PCP");
-  const reh = categoryValues(items, "REH");
-  const wsd = categoryValues(items, "WSD");
-
-  return {
-    date,
-    minTemperature: tmn[0] ?? (tmp.length > 0 ? Math.min(...tmp) : null),
-    maxTemperature: tmx[0] ?? (tmp.length > 0 ? Math.max(...tmp) : null),
-    averageTemperature: average(tmp),
-    rainfallMm: sum(pcp),
-    humidityPercent: average(reh),
-    windSpeedMs: average(wsd),
-  };
-}
-
-/**
- * 기상청 원본 응답(KmaForecastItem[])을 공통 정규화 타입(WeatherData)으로 변환한다.
- * 날짜별: 평균/최저/최고기온, 강수량(mm), 습도(%), 풍속(m/s).
- * 최초 날짜를 current, 이후 날짜들을 forecast로 나눈다.
- */
-export function normalizeKmaForecast(
-  items: KmaForecastItem[],
-  meta: { source: string; observedAt: string },
-): WeatherData {
-  const byDate = new Map<string, KmaForecastItem[]>();
-  for (const item of items) {
-    const date = toDateString(item.fcstDate);
-    const bucket = byDate.get(date);
-    if (bucket) {
-      bucket.push(item);
-    } else {
-      byDate.set(date, [item]);
+  for (
+    let index = slotMinutes.length - 1;
+    index >= 0;
+    index -= 1
+  ) {
+    if (bufferedMinutes >= slotMinutes[index]) {
+      selectedIndex = index;
+      break;
     }
   }
 
-  const days = Array.from(byDate.keys())
-    .sort()
-    .map((date) => buildDailyWeather(date, byDate.get(date) ?? []));
+  const baseDateUtc = new Date(
+    Date.UTC(year, month - 1, day),
+  );
 
-  const [current, ...forecast] = days;
+  /**
+   * 00:00~02:09 사이처럼 당일 조회 가능한 발표가 없으면
+   * 전날 23시 발표 자료를 사용한다.
+   */
+  if (selectedIndex === -1) {
+    selectedIndex = BASE_TIMES.length - 1;
+    baseDateUtc.setUTCDate(
+      baseDateUtc.getUTCDate() - 1,
+    );
+  }
 
   return {
-    current: current ?? null,
-    forecast,
-    source: meta.source,
-    observedAt: meta.observedAt,
-    isMock: false,
+    baseDate:
+      `${baseDateUtc.getUTCFullYear()}` +
+      `${pad2(baseDateUtc.getUTCMonth() + 1)}` +
+      `${pad2(baseDateUtc.getUTCDate())}`,
+    baseTime: BASE_TIMES[selectedIndex],
   };
 }
 
-async function fetchKmaForecast(
-  nx: number,
-  ny: number,
-  serviceKey: string,
-): Promise<KmaForecastItem[]> {
-  const { baseDate, baseTime } = getLatestBaseDateTime(new Date());
-
-  const params = new URLSearchParams({
-    serviceKey,
-    pageNo: "1",
-    numOfRows: "1000",
-    dataType: "JSON",
-    base_date: baseDate,
-    base_time: baseTime,
-    nx: String(nx),
-    ny: String(ny),
-  });
-
-  const res = await fetch(`${KMA_BASE_URL}?${params.toString()}`);
-  if (!res.ok) {
-    throw new Error(`기상청 API 응답 오류: HTTP ${res.status}`);
-  }
-
-  const data = (await res.json()) as KmaResponse;
-  const resultCode = data.response?.header?.resultCode;
-  if (resultCode !== "00") {
-    throw new Error(`기상청 API 오류: ${data.response?.header?.resultMsg ?? resultCode}`);
-  }
-
-  const items = data.response.body?.items?.item;
-  if (!items || items.length === 0) {
-    throw new Error("기상청 API 응답에 예보 데이터가 없습니다.");
-  }
-  return items;
+/**
+ * 기상청 단기예보 원본 항목 중
+ * 이 서비스에서 사용하는 필드만 정의한다.
+ */
+interface FcstItem {
+  category: string;
+  fcstDate: string;
+  fcstValue: string;
 }
 
 /**
- * API 담당자는 이 함수 내부만 구현하면 됩니다.
- * 반환 타입은 절대 변경하지 마세요.
+ * 강수량 PCP 값은 숫자가 아니라 다음과 같은 문자열로 올 수 있다.
+ *
+ * - 강수없음
+ * - 1.0mm 미만
+ * - 30.0~50.0mm
+ * - 50.0mm 이상
+ *
+ * 범위형 값은 공식 응답 문자열에 포함된 첫 숫자,
+ * 즉 하한값을 대표값으로 사용한다.
+ */
+function parseCategoricalMm(
+  raw: string | undefined,
+): number | null {
+  if (raw === undefined) {
+    return null;
+  }
+
+  if (raw.includes("없음")) {
+    return 0;
+  }
+
+  const match = raw.match(/[\d.]+/);
+
+  if (!match) {
+    return null;
+  }
+
+  const value = Number(match[0]);
+
+  return Number.isFinite(value)
+    ? value
+    : null;
+}
+
+/**
+ * YYYYMMDD 문자열을 YYYY-MM-DD 형식으로 변환한다.
+ */
+function formatIsoDate(
+  yyyymmdd: string,
+): string {
+  if (!/^\d{8}$/.test(yyyymmdd)) {
+    return yyyymmdd;
+  }
+
+  return (
+    `${yyyymmdd.slice(0, 4)}-` +
+    `${yyyymmdd.slice(4, 6)}-` +
+    `${yyyymmdd.slice(6, 8)}`
+  );
+}
+
+/**
+ * 배열을 지정된 키를 기준으로 그룹화한다.
+ */
+function groupBy<T, K>(
+  items: T[],
+  keyOf: (item: T) => K,
+): Map<K, T[]> {
+  const result = new Map<K, T[]>();
+
+  for (const item of items) {
+    const key = keyOf(item);
+    const group = result.get(key) ?? [];
+
+    group.push(item);
+    result.set(key, group);
+  }
+
+  return result;
+}
+
+/**
+ * 숫자 배열의 평균을 구한다.
+ * 값이 없으면 null을 반환한다.
+ */
+function average(
+  values: number[],
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  const total = values.reduce(
+    (sum, value) => sum + value,
+    0,
+  );
+
+  return total / values.length;
+}
+
+/**
+ * 숫자 배열의 합계를 구한다.
+ * 값이 없으면 null을 반환한다.
+ */
+function sum(
+  values: number[],
+): number | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values.reduce(
+    (total, value) => total + value,
+    0,
+  );
+}
+
+/**
+ * 예보 항목의 fcstValue를 숫자 배열로 변환한다.
+ * 숫자로 해석할 수 없는 값은 제외한다.
+ */
+function numericValues(
+  items: FcstItem[] | undefined,
+): number[] {
+  return (items ?? [])
+    .map((item) =>
+      parseFloatOrNull(item.fcstValue),
+    )
+    .filter(
+      (value): value is number =>
+        value !== null,
+    );
+}
+
+/**
+ * 특정 날짜의 기상청 예보 항목을
+ * 프로젝트 공통 DailyWeather 타입으로 변환한다.
+ */
+function buildDailyWeather(
+  fcstDate: string,
+  items: FcstItem[],
+): DailyWeather {
+  const byCategory = groupBy(
+    items,
+    (item) => item.category,
+  );
+
+  const temperatureValues =
+    numericValues(byCategory.get("TMP"));
+
+  const minimumTemperature =
+    parseFloatOrNull(
+      byCategory.get("TMN")?.[0]?.fcstValue,
+    );
+
+  const maximumTemperature =
+    parseFloatOrNull(
+      byCategory.get("TMX")?.[0]?.fcstValue,
+    );
+
+  const rainfallValues = (
+    byCategory.get("PCP") ?? []
+  )
+    .map((item) =>
+      parseCategoricalMm(item.fcstValue),
+    )
+    .filter(
+      (value): value is number =>
+        value !== null,
+    );
+
+  return {
+    date: formatIsoDate(fcstDate),
+
+    minTemperature:
+      minimumTemperature ??
+      (temperatureValues.length > 0
+        ? Math.min(...temperatureValues)
+        : null),
+
+    maxTemperature:
+      maximumTemperature ??
+      (temperatureValues.length > 0
+        ? Math.max(...temperatureValues)
+        : null),
+
+    averageTemperature:
+      average(temperatureValues),
+
+    rainfallMm:
+      sum(rainfallValues),
+
+    humidityPercent:
+      average(
+        numericValues(
+          byCategory.get("REH"),
+        ),
+      ),
+
+    windSpeedMs:
+      average(
+        numericValues(
+          byCategory.get("WSD"),
+        ),
+      ),
+  };
+}
+
+/**
+ * 기상청 단기예보 API를 호출해 원본 예보 항목을 가져온다.
+ */
+async function fetchVilageFcst(
+  serviceKey: string,
+  nx: number,
+  ny: number,
+): Promise<FcstItem[]> {
+  const {
+    baseDate,
+    baseTime,
+  } = resolveBaseDateTime(new Date());
+
+  const xml = await fetchPublicApiXml(
+    KMA_BASE_URL,
+    {
+      serviceKey,
+      pageNo: 1,
+      numOfRows: 1000,
+      dataType: "XML",
+      base_date: baseDate,
+      base_time: baseTime,
+      nx,
+      ny,
+    },
+  );
+
+  const status =
+    parseXmlResultStatus(xml);
+
+  if (!status.ok) {
+    throw new PublicApiError(
+      `기상청 단기예보 API 오류: ${
+        status.code ?? "UNKNOWN"
+      } ${status.message ?? ""}`,
+    );
+  }
+
+  const items = parseXmlItems(xml);
+
+  if (items.length === 0) {
+    throw new PublicApiError(
+      "기상청 단기예보 응답에 예보 항목이 없습니다.",
+    );
+  }
+
+  return items
+    .map((item) => ({
+      category:
+        item.category ?? "",
+      fcstDate:
+        item.fcstDate ?? "",
+      fcstValue:
+        item.fcstValue ?? "",
+    }))
+    .filter(
+      (item) =>
+        item.category.length > 0 &&
+        item.fcstDate.length > 0,
+    );
+}
+
+/**
+ * 실제 API를 사용할 수 없을 때
+ * mock 데이터와 fallback 이유를 반환한다.
+ */
+function mockWeatherWithReason(
+  location: LocationInput,
+  reason: string,
+): WeatherData {
+  return {
+    ...mockWeather,
+    source:
+      `${mockWeather.source} ` +
+      `(${location.address}, ${reason})`,
+  };
+}
+
+/**
+ * 지역의 단기 기상예보를 조회한다.
+ *
+ * 처리 흐름:
+ * 1. 환경변수에서 기상청 API 키 조회
+ * 2. 위치를 기상청 nx/ny 격자로 변환
+ * 3. 단기예보 API 호출
+ * 4. 날짜별 기온·강수량·습도·풍속 정규화
+ * 5. 첫 날짜는 current, 이후 날짜는 forecast로 반환
+ *
+ * API 호출이 불가능하거나 실패하면
+ * mock 데이터와 실패 이유를 반환한다.
  */
 export async function getWeather(
   location: LocationInput,
 ): Promise<WeatherData> {
-  const useMock = process.env.NEXT_PUBLIC_USE_MOCK_DATA === "true";
-  let apiKey: string | null = null;
-  if (!useMock) {
-    try {
-      apiKey = getRequiredEnv("KMA_API_KEY");
-    } catch {
-      apiKey = null;
-    }
+  const useMock =
+    process.env.NEXT_PUBLIC_USE_MOCK_DATA ===
+    "true";
+
+  const serviceKey = firstEnv(
+    "KMA_API_KEY",
+    "WEATHER_API_KEY",
+  );
+
+  if (useMock) {
+    return mockWeatherWithReason(
+      location,
+      "mock 모드",
+    );
   }
 
-  if (!apiKey) {
-    return {
-      ...mockWeather,
-      source: `${mockWeather.source} (${location.address})`,
-    };
+  if (!serviceKey) {
+    return mockWeatherWithReason(
+      location,
+      "KMA_API_KEY 또는 WEATHER_API_KEY 미설정",
+    );
   }
 
-  const grid = resolveGrid(location);
+  /**
+   * 기존 shared/kmaGrid 모듈을 사용해 다음 입력을 처리한다.
+   *
+   * - 이미 입력된 nx/ny
+   * - 위도/경도
+   * - 프로젝트에 등록된 지역 매핑
+   */
+  const grid = resolveKmaGrid(location);
+
   if (!grid) {
-    throw new Error(
-      "기상청 API 조회를 위해 location.nx/ny 또는 location.latitude/longitude가 필요합니다.",
+    return mockWeatherWithReason(
+      location,
+      "격자좌표 또는 위경도 확인 불가",
     );
   }
 
   try {
-    const items = await fetchKmaForecast(grid.nx, grid.ny, apiKey);
-    return normalizeKmaForecast(items, {
-      source: `기상청 단기예보 조회서비스 (${location.address})`,
-      observedAt: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error("[getWeather] 기상청 API 호출 실패, mock으로 대체:", error);
+    const normalizedKey =
+      normalizeServiceKey(serviceKey);
+
+    const items =
+      await fetchVilageFcst(
+        normalizedKey,
+        grid.nx,
+        grid.ny,
+      );
+
+    const byDate = groupBy(
+      items,
+      (item) => item.fcstDate,
+    );
+
+    const dates = Array
+      .from(byDate.keys())
+      .sort();
+
+    const dailyWeather = dates.map(
+      (date) =>
+        buildDailyWeather(
+          date,
+          byDate.get(date) ?? [],
+        ),
+    );
+
+    const [current, ...forecast] =
+      dailyWeather;
+
     return {
-      ...mockWeather,
-      source: `${mockWeather.source} (mock fallback: 기상청 API 오류 — ${location.address})`,
+      current: current ?? null,
+      forecast,
+      source:
+        `기상청 단기예보 조회서비스` +
+        `(getVilageFcst, nx=${grid.nx}, ny=${grid.ny})` +
+        ` - ${location.address}`,
+      observedAt:
+        new Date().toISOString(),
+      isMock: false,
     };
+  } catch (error) {
+    return mockWeatherWithReason(
+      location,
+      `실제 API 실패: ${
+        error instanceof Error
+          ? error.message
+          : "Unknown error"
+      }`,
+    );
   }
 }
