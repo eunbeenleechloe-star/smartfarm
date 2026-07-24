@@ -8,6 +8,8 @@ import type {
   FertilizerPrescription,
   SoilData,
   SoilDataStatus,
+  SoilParcelData,
+  SoilParcelStatus,
 } from "@/types/analysis";
 import type {
   CropPestsResponse,
@@ -24,6 +26,13 @@ import type {
 const MAX_BODY_LENGTH = 300_000;
 const VALID_CROP_IDS: CropId[] = ["apple", "pear", "cucumber", "potato", "lettuce"];
 const VALID_SOIL_DATA_STATUS: SoilDataStatus[] = ["ok", "no-data", "mock"];
+const VALID_SOIL_PARCEL_STATUS: SoilParcelStatus[] = [
+  "ok",
+  "no-data",
+  "not-requested",
+  "invalid-pnu",
+  "error",
+];
 
 function isString(value: unknown): value is string {
   return typeof value === "string";
@@ -78,6 +87,16 @@ function pickRisk(raw: unknown): CropRiskItem | null {
   };
 }
 
+function pickParcel(raw: unknown): SoilParcelData | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  if (!VALID_SOIL_PARCEL_STATUS.includes(r.status as SoilParcelStatus)) return undefined;
+  return {
+    status: r.status as SoilParcelStatus,
+    source: asStringOrNull(r.source),
+  };
+}
+
 function pickSoil(raw: unknown): SoilData | null {
   if (!raw || typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
@@ -96,6 +115,7 @@ function pickSoil(raw: unknown): SoilData | null {
     observedAt: asStringOrNull(r.observedAt),
     isMock: r.isMock,
     dataStatus,
+    parcel: pickParcel(r.parcel),
   };
 }
 

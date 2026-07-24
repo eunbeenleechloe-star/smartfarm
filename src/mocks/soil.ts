@@ -10,4 +10,5 @@ export const mockSoil: SoilData = {
   source: "데모용 토양 샘플",
   observedAt: null,
   isMock: true,
+  parcel: { status: "not-requested", source: null },
 };

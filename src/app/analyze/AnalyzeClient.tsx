@@ -22,7 +22,13 @@ import StatusBadge, { severityLabel, severityToTone } from "@/components/StatusB
 import { cropResearchStandards } from "@/data/cropResearchStandards";
 import { getHighestSeverity, type CropRiskItem } from "@/lib/cropRiskAnalyzer";
 import type { CropAnalysisResult } from "@/services/cropAnalysis";
-import type { AnalysisInput, CropId, LocationInput as LocationInputData, RiskSeverity } from "@/types/analysis";
+import type {
+  AnalysisInput,
+  CropId,
+  LocationInput as LocationInputData,
+  ParcelInput,
+  RiskSeverity,
+} from "@/types/analysis";
 import type { CropPestsResponse } from "@/types/cropPests";
 import type { FarmAnalysisReport } from "@/types/farmReport";
 
@@ -85,6 +91,7 @@ export default function AnalyzeClient() {
 
   const [address, setAddress] = useState("");
   const [selectedRegion, setSelectedRegion] = useState<LegalDistrictSelection | null>(null);
+  const [parcel, setParcel] = useState<ParcelInput | null>(null);
   const [cropId, setCropId] = useState<CropId | null>(null);
   const [growthStage, setGrowthStage] = useState("");
   const [areaM2, setAreaM2] = useState("");
@@ -126,6 +133,7 @@ export default function AnalyzeClient() {
         ...(selectedRegion.weatherGridPrecision
           ? { weatherGridPrecision: selectedRegion.weatherGridPrecision }
           : {}),
+        ...(parcel ? { parcel } : {}),
       };
     }
 
@@ -218,9 +226,16 @@ export default function AnalyzeClient() {
             onChange={setAddress}
             selectedCode={selectedRegion?.code ?? null}
             onSelectCode={(selection) => setSelectedRegion(selection)}
+            onParcelChange={setParcel}
           />
           <GrowthStageSelect cropId={cropId} value={growthStage} onChange={setGrowthStage} />
         </div>
+
+        <p className="mt-3 text-sm text-muted">
+          {parcel
+            ? "지번을 입력했으니 토성, 배수 상태, 유효토심까지 함께 확인해요."
+            : "지역의 최근 날씨와 토양검정 자료를 바탕으로 분석해요."}
+        </p>
 
         <div className="mt-6">
           <CropSelector value={cropId} onChange={setCropId} />
