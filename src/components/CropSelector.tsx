@@ -4,9 +4,7 @@ import type { CropId } from "@/types/analysis";
 const CROP_IDS: CropId[] = ["apple", "pear", "cucumber", "potato", "lettuce"];
 
 /** 크롭별 옵션 카드 이미지. 이미지가 없는 작물은 기존 텍스트 pill 스타일을 그대로 쓴다. */
-const CROP_IMAGES: Partial<Record<CropId, string>> = {
-  cucumber: "/images/farmer-crop.png",
-};
+const CROP_IMAGES: Partial<Record<CropId, string>> = {};
 
 export default function CropSelector({
   value,

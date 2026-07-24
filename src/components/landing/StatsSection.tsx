@@ -13,13 +13,15 @@ export default function StatsSection() {
       <div className="mx-auto grid max-w-[1200px] items-center gap-10 sm:grid-cols-2">
         <ScrollReveal className="relative">
           <img
-            src="/images/data-visual.png"
-            alt="AI 데이터 분석 시각화"
-            className="h-72 w-full rounded-2xl object-cover sm:h-96"
+            src="/images/data-analysis.png"
+            alt="공공데이터 분석 일러스트"
+            className="h-72 w-full rounded-2xl object-contain sm:h-96"
           />
           <div className="mt-6">
-            <h2 className="font-display text-3xl font-bold text-white">
-              신뢰할 수 있는 공공데이터 기반 분석
+            <h2 className="text-3xl font-bold text-white">
+              신뢰할 수 있는 공공데이터
+              <br />
+              기반 분석
             </h2>
             <p className="mt-3 max-w-md text-sm text-white/75">
               기상청 단기예보와 토양 통계, 농촌진흥청 재배 기준을 바탕으로
@@ -33,7 +35,7 @@ export default function StatsSection() {
             <div className="grid grid-cols-2 gap-8">
               {STATS.map((stat) => (
                 <div key={stat.label}>
-                  <div className="font-display text-4xl font-bold text-primary">{stat.value}</div>
+                  <div className="text-4xl font-bold text-primary">{stat.value}</div>
                   <div className="mt-1 text-xs leading-relaxed text-muted">{stat.label}</div>
                 </div>
               ))}

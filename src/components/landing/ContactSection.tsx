@@ -8,7 +8,7 @@ export default function ContactSection() {
       <div className="mx-auto max-w-[1200px]">
         <ScrollReveal className="grid items-center gap-10 rounded-3xl border border-border bg-card p-8 sm:grid-cols-2 sm:p-12">
           <div>
-            <h2 className="font-display text-3xl font-bold text-text">문의하기</h2>
+            <h2 className="text-3xl font-bold text-text">문의하기</h2>
             <p className="mt-4 text-sm leading-relaxed text-muted">
               서비스 이용 중 궁금한 점이나 제안하고 싶은 내용이 있다면 언제든
               편하게 연락해주세요.
