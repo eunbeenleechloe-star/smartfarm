@@ -55,6 +55,8 @@ export interface CropAnalysisResult {
   excludedFields: ScoreResult["excludedFields"];
   risks: CropRiskResult["risks"];
   fertilizer: FertilizerPrescription | null;
+  /** getSoil() 원본 결과를 그대로 전달한다(점수 계산에는 관여하지 않음 — 화면 표시 전용). */
+  soil: SoilData;
   dataQuality: CropDataQuality;
   sources: string[];
   generatedAt: string;
@@ -189,6 +191,7 @@ export function analyzeCrop(input: CropAnalysisInput): CropAnalysisResult {
     excludedFields: cropScoreResult.excludedFields,
     risks: cropRiskResult.risks,
     fertilizer,
+    soil,
     dataQuality: {
       weatherIsMock: weather.isMock,
       soilIsMock: soil.isMock,

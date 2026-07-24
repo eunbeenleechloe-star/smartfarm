@@ -24,8 +24,26 @@ const FRTLZR_STD_USE_URL =
  *
  * 공식 확인된 코드만 입력한다.
  * 값이 없는 작물은 실제 API를 호출하지 않고 mock fallback을 사용한다.
+ *
+ * 아래 5개는 "작물별 비료 표준사용량 처방 정보" 공식 기술명세서의 비료표준작물코드표에서
+ * 확인한 값이다(프로토타입 기본값 — 재배조건이 여러 개인 작물은 그중 하나를 대표로 선택함).
+ * - apple: 09001 (사과 비옥지 1~4년)
+ * - pear: 09011 (배 비옥지 1~4년)
+ * - potato: 03001 (감자 준고냉지 및 고냉지)
+ * - cucumber: 04009 (오이 노지재배)
+ * - lettuce: 07001 (상추 노지재배)
+ *
+ * TODO: 현재는 CropId가 5개로 고정돼 있어 이 표를 상수로 직접 관리한다. 향후 지원 작물이
+ * 늘어나 고정 목록을 벗어나면, 그때 별도의 작물코드 조회 API(예: 국립종자원_작물코드)를
+ * 연동해 이 상수 표를 대체하는 것을 검토한다. 지금은 5개뿐이라 조회 API를 추가하지 않는다.
  */
-const VERIFIED_CROP_CODES: Partial<Record<CropId, string>> = {};
+const VERIFIED_CROP_CODES: Partial<Record<CropId, string>> = {
+  apple: "09001",
+  pear: "09011",
+  potato: "03001",
+  cucumber: "04009",
+  lettuce: "07001",
+};
 
 interface FertilizerRate {
   preFertN: number | null;

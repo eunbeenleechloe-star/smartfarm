@@ -44,3 +44,107 @@ export function resolveProvinceBjdCodes(location: LocationInput): string[] | nul
   if (region.altCode) codes.push(`${region.altCode}00000000`);
   return codes;
 }
+
+/** 토양검정 화학성 API(getSoilExamList)용 읍면동 단위 10자리 STDG_CD 매핑 1건. */
+export interface SoilRegionMapping {
+  displayName: string;
+  aliases: string[];
+  stdgCode: string;
+}
+
+/**
+ * 프로토타입이 대표로 지원하는 지역의 검증된 읍면동 단위 법정동코드(STDG_CD, 10자리).
+ *
+ * 출처: 행정안전부 "법정동코드 전체자료"(공식 법정동코드 전체 목록, code.go.kr 배포본을
+ * 그대로 옮긴 탭 구분 텍스트 — 법정동코드/법정동명/폐지여부 3열)에서
+ * "전라북도 고창군 고창읍" 행을 확인함(2026-07). 해당 자료에는 "전라북도 고창군 고창읍" 하위
+ * 법정리가 18개(읍내리~성두리, 25021~25038) 등록되어 있어 고창읍 자체의 코드(끝 3자리 000)인
+ * 4579025000이 읍·면 단위 코드임을 교차 확인했다.
+ * 전북특별자치도(2024-01-18 개편) 이후에도 이 법정동 레코드는 구코드(45)를 유지한다
+ * (resolveProvinceBjdCodes의 강원/전북 구코드 우선 원칙과 동일한 근거).
+ *
+ * 여기 없는 지역은 전국 주소 검색으로 확장하지 않고 null을 반환한다 —
+ * 확인되지 않은 코드를 임의로 만들어 채우지 않는다.
+ */
+export const SOIL_REGION_MAPPINGS: SoilRegionMapping[] = [
+  {
+    displayName: "전북특별자치도 고창군 고창읍",
+    aliases: ["전라북도 고창군 고창읍", "전북 고창군 고창읍", "고창군 고창읍", "고창읍"],
+    stdgCode: "4579025000",
+  },
+];
+
+/** 앞뒤 공백을 제거하고 연속 공백을 한 칸으로 줄인다(주소 매칭 전 정규화). */
+function normalizeAddressForMatch(address: string): string {
+  return address.trim().replace(/\s+/g, " ");
+}
+
+/**
+ * 주소 문자열이 SOIL_REGION_MAPPINGS에 등록된 지역(표시명 또는 별칭)과 일치하면
+ * 검증된 10자리 STDG_CD를 반환한다. 등록되지 않은 지역은 null이며, 이 경우 호출부(soil.ts)는
+ * 시도 단위 코드 등으로 대체하지 않고 API 호출 자체를 하지 않아야 한다.
+ */
+export function resolveVerifiedStdgCode(location: LocationInput): string | null {
+  const address = normalizeAddressForMatch(location.address);
+
+  for (const mapping of SOIL_REGION_MAPPINGS) {
+    const candidates = [mapping.displayName, ...mapping.aliases];
+    if (candidates.some((candidate) => address.includes(normalizeAddressForMatch(candidate)))) {
+      return mapping.stdgCode;
+    }
+  }
+
+  return null;
+}
+
+export interface RegionCodeSelfCheckResult {
+  label: string;
+  passed: boolean;
+  message: string;
+}
+
+/** SOIL_REGION_MAPPINGS/resolveVerifiedStdgCode()의 매칭 규칙을 실제 네트워크 호출 없이 점검한다. */
+export function runRegionCodeSelfChecks(): RegionCodeSelfCheckResult[] {
+  const results: RegionCodeSelfCheckResult[] = [];
+
+  results.push({
+    label: "1. 전체 주소 정확 일치(전북특별자치도 고창군 고창읍) → 4579025000",
+    passed: resolveVerifiedStdgCode({ address: "전북특별자치도 고창군 고창읍" }) === "4579025000",
+    message: `result=${JSON.stringify(resolveVerifiedStdgCode({ address: "전북특별자치도 고창군 고창읍" }))}`,
+  });
+
+  const aliasCases = ["전라북도 고창군 고창읍", "전북 고창군 고창읍", "고창군 고창읍", "고창읍"];
+  for (const [index, alias] of aliasCases.entries()) {
+    results.push({
+      label: `2-${index + 1}. 별칭 일치("${alias}") → 4579025000`,
+      passed: resolveVerifiedStdgCode({ address: alias }) === "4579025000",
+      message: `result=${JSON.stringify(resolveVerifiedStdgCode({ address: alias }))}`,
+    });
+  }
+
+  results.push({
+    label: "3. 앞뒤 공백이 있어도 일치( '  고창읍  ' )",
+    passed: resolveVerifiedStdgCode({ address: "  고창읍  " }) === "4579025000",
+    message: `result=${JSON.stringify(resolveVerifiedStdgCode({ address: "  고창읍  " }))}`,
+  });
+
+  results.push({
+    label: "4. 연속 공백이 있어도 일치('전북   고창군   고창읍')",
+    passed: resolveVerifiedStdgCode({ address: "전북   고창군   고창읍" }) === "4579025000",
+    message: `result=${JSON.stringify(resolveVerifiedStdgCode({ address: "전북   고창군   고창읍" }))}`,
+  });
+
+  results.push({
+    label: "5. 미지원 지역(서울특별시 강남구) → null",
+    passed: resolveVerifiedStdgCode({ address: "서울특별시 강남구" }) === null,
+    message: `result=${JSON.stringify(resolveVerifiedStdgCode({ address: "서울특별시 강남구" }))}`,
+  });
+
+  results.push({
+    label: "6. 등록된 모든 STDG_CD가 정확히 10자리 숫자",
+    passed: SOIL_REGION_MAPPINGS.every((mapping) => /^\d{10}$/.test(mapping.stdgCode)),
+    message: JSON.stringify(SOIL_REGION_MAPPINGS.map((m) => m.stdgCode)),
+  });
+
+  return results;
+}

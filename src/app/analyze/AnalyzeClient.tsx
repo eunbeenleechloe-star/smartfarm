@@ -12,8 +12,10 @@ import GrowthStageSelect from "@/components/GrowthStageSelect";
 import LoadingSteps from "@/components/LoadingSteps";
 import LocationInput from "@/components/LocationInput";
 import MetricCard from "@/components/MetricCard";
+import CropPestsSection from "@/components/pests/CropPestsSection";
 import RiskCard from "@/components/RiskCard";
 import ScoreGauge from "@/components/ScoreGauge";
+import SoilCard from "@/components/SoilCard";
 import SourceList from "@/components/SourceList";
 import StatusBadge, { severityLabel, severityToTone } from "@/components/StatusBadge";
 import { cropResearchStandards } from "@/data/cropResearchStandards";
@@ -231,6 +233,12 @@ export default function AnalyzeClient() {
             </div>
           </section>
 
+          {/* 4-1. 토양 정보 */}
+          <section>
+            <h2 className="mb-4 text-xl font-semibold text-text">토양 정보</h2>
+            <SoilCard soil={result.soil} />
+          </section>
+
           {/* 5. 비료사용처방 */}
           <section>
             <h2 className="mb-4 text-xl font-semibold text-text">비료사용처방</h2>
@@ -250,6 +258,9 @@ export default function AnalyzeClient() {
               dataQuality={result.dataQuality}
             />
           </section>
+
+          {/* 7. 병해충 정보 */}
+          <CropPestsSection cropId={result.cropId} />
         </div>
       )}
     </main>

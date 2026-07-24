@@ -18,10 +18,10 @@ export function normalizeServiceKey(rawKey: string): string {
   }
 }
 
-/** 여러 후보 환경변수 이름 중 값이 있는 첫 번째를 반환한다. */
+/** 여러 후보 환경변수 이름 중 값이 있는 첫 번째를 반환한다. 앞뒤 공백은 제거한다(값 자체는 로그에 남기지 않는다). */
 export function firstEnv(...names: string[]): string | undefined {
   for (const name of names) {
-    const value = process.env[name];
+    const value = process.env[name]?.trim();
     if (value) return value;
   }
   return undefined;

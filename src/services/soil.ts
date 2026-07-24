@@ -10,32 +10,42 @@ import {
   parseXmlResultStatus,
   PublicApiError,
 } from "./shared/publicApi";
-import { resolveProvinceBjdCodes } from "./shared/regionCode";
+import { resolveVerifiedStdgCode } from "./shared/regionCode";
 
 /**
  * 농촌진흥청 국립농업과학원_토양검정 화학성 상세정보
  * - pH·EC 실측값 조회
- * - BJD_Code를 이용한 지역 조회
+ * - STDG_CD(법정동코드)를 이용한 지역 조회
  *
  * 농경지화학성 통계정보(V2)는 공식 기술명세서를 확보하지 못해
  * 현재 연동하지 않는다.
+ * data.go.kr 데이터셋(15073569, V1)이 삭제되고 V2(15144647)로 이전되면서
+ * 경로에 /V2/ 세그먼트가 추가됐다. 이 변경 전 경로는 게이트웨이가 "API not found"(404)로
+ * 응답한다(승인/인증키 문제가 아니라 URL 자체가 없는 경로였음 — 2026-07 실호출로 확인).
+ * 요청 파라미터명은 V1 시절의 BJD_Code가 아니라 STDG_CD다(공식 기술명세서 ver1.0으로 확인,
+ * 2026-07 — BJD_Code로 보내면 Result_Code=204 PARAM_ESSENTIAL_ERROR가 난다).
  */
 const SOIL_EXAM_LIST_URL =
-  "https://apis.data.go.kr/1390802/SoilEnviron/SoilExam/getSoilExamList";
+  "https://apis.data.go.kr/1390802/SoilEnviron/SoilExam/V2/getSoilExamList";
 
 /**
- * 농촌진흥청 국립농업과학원_토양도 기반 토양특성 상세정보(V2)
+ * 농촌진흥청 국립농업과학원_토양도 기반 토양특성 상세정보
  * - 토성
  * - 배수등급
  * - 유효토심
  *
- * 조회 시 PNU_Code가 필요하다.
+ * 조회 시 PNU_CD(19자리 지번코드)가 필요하다.
+ * data.go.kr에서 V3(15144225)로 이전됐다 — V2 경로는 삭제되어 404가 난다(2026-07 실호출로 확인).
+ *
+ * 현재 이 앱에는 이 호출이 없다: getSoilExamList 실응답에는 PNU_Nm(주소 문자열)만 있고
+ * PNU_Code(코드)는 제공되지 않아(2026-07 실호출로 확인), 검증된 19자리 PNU_CD를 얻을 경로가
+ * 없다. 주소→PNU 변환(지오코딩)은 이 프로토타입 범위에 포함하지 않으므로, 검증된 PNU_CD가
+ * 생기기 전까지 아래 fetchSoilCharacByPnu()는 어디서도 호출하지 않는다(추측 PNU로 호출 금지).
  */
 const SOIL_CHARAC_URL =
-  "https://apis.data.go.kr/1390802/SoilEnviron/SoilCharac/V2/getSoilCharacter";
+  "https://apis.data.go.kr/1390802/SoilEnviron/SoilCharac/V3/getSoilCharacter";
 
 interface SoilExamItem {
-  pnuCode: string | undefined;
   examDay: string | undefined;
   ph: number | null;
   ec: number | null;
@@ -50,7 +60,7 @@ async function fetchSoilExamList(
 ): Promise<SoilExamItem[]> {
   const xml = await fetchPublicApiXml(SOIL_EXAM_LIST_URL, {
     serviceKey,
-    BJD_Code: bjdCode,
+    STDG_CD: bjdCode,
     Page_No: 1,
     Page_Size: 100,
   });
@@ -70,10 +80,9 @@ async function fetchSoilExamList(
   }
 
   return parseXmlItems(xml).map((item) => ({
-    pnuCode: item.PNU_Code,
     examDay: item.Exam_Day,
     ph: parseFloatOrNull(item.ACID),
-    ec: parseFloatOrNull(item.SELC),
+    ec: parseFloatOrNull(item.ELCD),
   }));
 }
 
@@ -132,6 +141,8 @@ interface SoilCharacResult {
 
 /**
  * PNU 코드를 기준으로 토양 물리 특성을 조회한다.
+ * 검증된 19자리 PNU_CD가 명시적으로 주어질 때만 호출해야 한다(추측 PNU 금지).
+ * 현재 getSoil()에는 이 함수를 호출하는 코드가 없다 — 위 SOIL_CHARAC_URL 주석 참고.
  */
 async function fetchSoilCharacByPnu(
   serviceKey: string,
@@ -139,7 +150,7 @@ async function fetchSoilCharacByPnu(
 ): Promise<SoilCharacResult> {
   const xml = await fetchPublicApiXml(SOIL_CHARAC_URL, {
     serviceKey,
-    PNU_Code: pnuCode,
+    PNU_CD: pnuCode,
   });
 
   const status = parseXmlResultStatus(xml);
@@ -213,14 +224,10 @@ function mockSoilWithReason(
  * 지역 토양 정보를 조회한다.
  *
  * 반환 데이터:
- * - pH
- * - EC
- * - 토성
- * - 배수등급
- * - 유효토심
- *
- * pH·EC는 해당 지역 토양검정 표본의 평균값이며,
- * 토성·배수·유효토심은 조회된 표본 중 대표 PNU를 이용한 참고값이다.
+ * - pH, EC: 토양검정 화학성 API(getSoilExamList)의 실측 표본 평균값.
+ * - 토성, 배수등급, 유효토심: 검증된 19자리 필지 PNU 코드가 있어야 조회 가능한데,
+ *   이 API 응답에는 PNU 코드가 없어(PNU_Nm 주소 문자열만 제공) 현재 항상 null이다.
+ *   주소를 PNU로 추측·변환하지 않는다.
  *
  * 값이 없으면 임의로 생성하지 않고 null을 유지한다.
  */
@@ -247,30 +254,22 @@ export async function getSoil(
     );
   }
 
-  const bjdCodes = resolveProvinceBjdCodes(location);
+  const stdgCode = resolveVerifiedStdgCode(location);
 
-  if (!bjdCodes) {
+  if (!stdgCode) {
     return mockSoilWithReason(
       location,
-      "법정동코드 확인 불가",
+      "읍면동 법정동코드 확인 불가",
     );
   }
 
   const normalizedKey = normalizeServiceKey(serviceKey);
 
   try {
-    let items: SoilExamItem[] = [];
-
-    for (const bjdCode of bjdCodes) {
-      items = await fetchSoilExamList(
-        normalizedKey,
-        bjdCode,
-      );
-
-      if (items.length > 0) {
-        break;
-      }
-    }
+    const items = await fetchSoilExamList(
+      normalizedKey,
+      stdgCode,
+    );
 
     if (items.length === 0) {
       return mockSoilWithReason(
@@ -299,42 +298,16 @@ export async function getSoil(
       .sort()
       .at(-1);
 
-    let characteristics: SoilCharacResult = {
+    /**
+     * 토성/배수/유효토심은 검증된 19자리 PNU_CD가 있어야 조회할 수 있는데,
+     * getSoilExamList 응답에는 PNU 코드가 없어(PNU_Nm 주소 문자열만 제공) 확보할 방법이
+     * 없다. 주소를 PNU로 추측·변환하지 않으므로 항상 null이다(0이나 mock 값으로 대체 금지).
+     */
+    const characteristics: SoilCharacResult = {
       texture: null,
       drainage: null,
       effectiveDepthCm: null,
     };
-
-    /**
-     * 조회된 표본 중 PNU가 존재하는 첫 항목을
-     * 해당 지역의 대표 필지로 사용한다.
-     *
-     * 사용자가 지정한 정확한 필지가 아니므로
-     * source에 대표 필지 기준임을 명시한다.
-     */
-    const representativePnu = items.find(
-      (item) => Boolean(item.pnuCode),
-    )?.pnuCode;
-
-    if (representativePnu) {
-      try {
-        characteristics =
-          await fetchSoilCharacByPnu(
-            normalizedKey,
-            representativePnu,
-          );
-      } catch {
-        /**
-         * 물리적 토양정보 조회에 실패해도
-         * 이미 조회한 pH·EC 정보는 유지한다.
-         */
-        characteristics = {
-          texture: null,
-          drainage: null,
-          effectiveDepthCm: null,
-        };
-      }
-    }
 
     const observedAt =
       latestExamDay &&
@@ -364,10 +337,8 @@ export async function getSoil(
 
       source:
         `농촌진흥청 국립농업과학원 토양검정 화학성 상세정보` +
-        ` (pH·EC, 표본 ${items.length}개 평균)` +
-        (representativePnu
-          ? " + 토양도 기반 토양특성 상세정보(대표 필지 기준)"
-          : "") +
+        ` (pH·EC만 실측, 표본 ${items.length}개 평균` +
+        ` — 토성·배수·유효토심은 필지 PNU 코드 미확보로 제공되지 않음)` +
         ` - ${location.address}`,
 
       observedAt,
