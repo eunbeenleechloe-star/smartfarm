@@ -492,7 +492,7 @@ export async function getWeather(
       forecast,
       source:
         `기상청 단기예보 조회서비스` +
-        `(getVilageFcst, nx=${grid.nx}, ny=${grid.ny})` +
+        `(getVilageFcst, nx=${grid.nx}, ny=${grid.ny}, ${grid.label})` +
         ` - ${location.address}`,
       observedAt:
         new Date().toISOString(),

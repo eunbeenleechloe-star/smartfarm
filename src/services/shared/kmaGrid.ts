@@ -1,4 +1,5 @@
 import type { LocationInput } from "@/types/analysis";
+import { resolveWeatherGridMatch } from "./weatherGrid";
 
 /**
  * 위경도 → 기상청 단기예보 격자(nx, ny) 변환(Lambert Conformal Conic).
@@ -60,19 +61,59 @@ export const KMA_REGION_GRID: { names: string[]; nx: number; ny: number }[] = [
   { names: ["제주"], nx: 52, ny: 38 },
 ];
 
+export interface KmaGridResolution {
+  nx: number;
+  ny: number;
+  /** 이 좌표가 어느 정밀도에서 확보됐는지. source 문구 등 표시용. */
+  precision: "town" | "city" | "province";
+  /** "강릉시 강동면 기준 격자" 같은 사람이 읽는 설명. */
+  label: string;
+}
+
 /**
  * 위치 정보로부터 기상청 격자좌표를 구한다.
- * 우선순위: 명시적 nx/ny → 위경도 변환 → 주소 문자열의 시도명 매칭. 모두 실패하면 null.
+ * 우선순위:
+ * 1) 명시적 nx/ny(전국 법정동 검색에서 선택된 값 — 있으면 그대로 사용)
+ * 2) 검증된 시군구/읍면동 격자 매핑(weatherGrid.ts, 주소 문자열로 매칭)
+ * 3) 위경도 변환(DFS 공식)
+ * 4) 기존 17개 시도 대표 격자(주소 문자열의 시도명 매칭)
+ * 모두 실패하면 null — 임의 좌표를 만들지 않는다.
  */
-export function resolveKmaGrid(location: LocationInput): { nx: number; ny: number } | null {
+export function resolveKmaGrid(location: LocationInput): KmaGridResolution | null {
   if (location.nx !== undefined && location.ny !== undefined) {
-    return { nx: location.nx, ny: location.ny };
+    const precision = location.weatherGridPrecision ?? "town";
+    return {
+      nx: location.nx,
+      ny: location.ny,
+      precision,
+      label: "선택된 지역 기준 격자",
+    };
   }
+
+  const gridMatch = resolveWeatherGridMatch(location.address);
+  if (gridMatch) {
+    return {
+      nx: gridMatch.nx,
+      ny: gridMatch.ny,
+      precision: gridMatch.precision,
+      label: `${gridMatch.matchedName} 기준 ${gridMatch.precision === "town" ? "읍면동" : "시군구"} 격자`,
+    };
+  }
+
   if (location.latitude !== undefined && location.longitude !== undefined) {
-    return latLonToKmaGrid(location.latitude, location.longitude);
+    const { nx, ny } = latLonToKmaGrid(location.latitude, location.longitude);
+    return { nx, ny, precision: "town", label: "위경도 기반 격자" };
   }
+
   const region = KMA_REGION_GRID.find((candidate) =>
     candidate.names.some((name) => location.address.includes(name)),
   );
-  return region ? { nx: region.nx, ny: region.ny } : null;
+  if (!region) return null;
+
+  return {
+    nx: region.nx,
+    ny: region.ny,
+    precision: "province",
+    label: `${region.names[0]} 대표 격자(정확한 읍면동 격자 없음)`,
+  };
 }

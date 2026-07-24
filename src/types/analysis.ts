@@ -17,6 +17,10 @@ export interface LocationInput {
   longitude?: number;
   nx?: number;
   ny?: number;
+  /** 전국 법정동 검색(legalDistrictSearch)에서 선택된 10자리 법정동코드. SoilExam V2 STDG_CD로 쓰인다. */
+  stdgCode?: string;
+  /** nx/ny가 어느 정밀도로 확보됐는지(검색 시점에 함께 계산됨). nx/ny가 없으면 의미 없음. */
+  weatherGridPrecision?: "town" | "city" | "province";
 }
 
 export interface DailyWeather {
@@ -37,6 +41,8 @@ export interface WeatherData {
   isMock: boolean;
 }
 
+export type SoilDataStatus = "ok" | "no-data" | "mock";
+
 export interface SoilData {
   ph: number | null;
   ecDsM: number | null;
@@ -47,6 +53,12 @@ export interface SoilData {
   source: string;
   observedAt: string | null;
   isMock: boolean;
+  /**
+   * "ok": 실제 API가 표본을 반환함. "no-data": 실제 API가 정상 응답했지만 해당 지역 표본이
+   * 없음(Result_Code=301, mock 아님). "mock": API 실패/미설정/개발 모드로 대체 데이터 사용.
+   * 기존 코드와의 호환을 위해 optional로 둔다 — 없으면 isMock으로만 판단한다.
+   */
+  dataStatus?: SoilDataStatus;
 }
 
 export interface FertilizerPrescription {

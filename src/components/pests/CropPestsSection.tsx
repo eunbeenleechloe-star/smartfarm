@@ -23,7 +23,19 @@ async function fetchCropPests(cropId: CropId): Promise<CropPestsResponse> {
   return data as CropPestsResponse;
 }
 
-export default function CropPestsSection({ cropId }: { cropId: CropId }) {
+/**
+ * `onResult`는 선택 사항이다 — /api/crop-pests를 다시 호출하지 않고, 이 컴포넌트가 이미
+ * 받아온 결과(성공 시 CropPestsResponse, 실패 시 null)를 부모(AnalyzeClient)에게 그대로
+ * 전달하기만 한다. AI 리포트가 병해충 정보를 함께 쓸 수 있게 하기 위함이며, 이 컴포넌트
+ * 자체의 fetch/렌더링 로직은 바뀌지 않는다.
+ */
+export default function CropPestsSection({
+  cropId,
+  onResult,
+}: {
+  cropId: CropId;
+  onResult?: (result: CropPestsResponse | null) => void;
+}) {
   const [status, setStatus] = useState<SectionStatus>("loading");
   const [data, setData] = useState<CropPestsResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -36,22 +48,26 @@ export default function CropPestsSection({ cropId }: { cropId: CropId }) {
     setErrorMessage(null);
     setSelected(null);
     setActiveTab("disease");
+    onResult?.(null);
 
     fetchCropPests(cropId)
       .then((result) => {
         if (cancelled) return;
         setData(result);
         setStatus("success");
+        onResult?.(result);
       })
       .catch((error) => {
         if (cancelled) return;
         setErrorMessage(error instanceof Error ? error.message : "병해충 정보를 불러오지 못했습니다.");
         setStatus("error");
+        onResult?.(null);
       });
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cropId]);
 
   const activeItems: (DiseaseCardItem | InsectCardItem)[] =

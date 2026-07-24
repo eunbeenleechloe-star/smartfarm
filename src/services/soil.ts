@@ -12,6 +12,21 @@ import {
 } from "./shared/publicApi";
 import { resolveVerifiedStdgCode } from "./shared/regionCode";
 
+const STDG_CODE_PATTERN = /^\d{10}$/;
+
+/**
+ * 조회에 사용할 10자리 STDG_CD를 결정한다.
+ * 1) location.stdgCode(전국 법정동 검색에서 선택된 값)를 최우선 사용 — 정확히 10자리인지 검증한다.
+ * 2) 없으면 SOIL_REGION_MAPPINGS(이전 수동 매핑, 호환용 fallback)를 시도한다.
+ * 3) 둘 다 없으면 null — 이 경우 외부 API를 호출하지 않는다(시도 단위 코드로 대체하지 않음).
+ */
+function resolveStdgCode(location: LocationInput): string | null {
+  if (location.stdgCode && STDG_CODE_PATTERN.test(location.stdgCode)) {
+    return location.stdgCode;
+  }
+  return resolveVerifiedStdgCode(location);
+}
+
 /**
  * 농촌진흥청 국립농업과학원_토양검정 화학성 상세정보
  * - pH·EC 실측값 조회
@@ -217,6 +232,30 @@ function mockSoilWithReason(
   return {
     ...mockSoil,
     source: `${mockSoil.source} (${location.address}, ${reason})`,
+    dataStatus: "mock",
+  };
+}
+
+/**
+ * 실제 API가 정상 응답했지만(Result_Code=301) 해당 지역에 최근 표본이 없을 때 반환한다.
+ * mock이 아니다 — pH/EC/토성/배수/유효토심을 전부 null로 유지하고(0이나 mock 값으로 대체하지
+ * 않음), scoring에서는 결측으로 자동 제외된다(cropScoring의 null 처리 그대로 적용).
+ */
+function noDataSoil(location: LocationInput, stdgCode: string): SoilData {
+  return {
+    ph: null,
+    ecDsM: null,
+    texture: null,
+    drainage: null,
+    effectiveDepthCm: null,
+    dataLevel: "district",
+    source:
+      `농촌진흥청 국립농업과학원 토양검정 화학성 상세정보` +
+      ` - 최근 3년 내 해당 지역(STDG_CD=${stdgCode}) 표본 없음` +
+      ` - ${location.address}`,
+    observedAt: null,
+    isMock: false,
+    dataStatus: "no-data",
   };
 }
 
@@ -230,6 +269,10 @@ function mockSoilWithReason(
  *   주소를 PNU로 추측·변환하지 않는다.
  *
  * 값이 없으면 임의로 생성하지 않고 null을 유지한다.
+ *
+ * mock과 "정상 무데이터"는 다르다: 실제 API가 정상 응답했지만 해당 지역 표본이 없으면
+ * (Result_Code=301) noDataSoil()을 반환한다(isMock=false, dataStatus="no-data"). mock은
+ * mock 모드/키 미설정/법정동코드 확인 불가/API 실패(네트워크·인증·파싱 오류)일 때만 쓴다.
  */
 export async function getSoil(
   location: LocationInput,
@@ -254,7 +297,7 @@ export async function getSoil(
     );
   }
 
-  const stdgCode = resolveVerifiedStdgCode(location);
+  const stdgCode = resolveStdgCode(location);
 
   if (!stdgCode) {
     return mockSoilWithReason(
@@ -272,10 +315,8 @@ export async function getSoil(
     );
 
     if (items.length === 0) {
-      return mockSoilWithReason(
-        location,
-        "토양검정 화학성 조회 결과 없음",
-      );
+      // 실제 API가 정상 응답했지만 표본이 없는 경우다(Result_Code=301) — mock이 아니다.
+      return noDataSoil(location, stdgCode);
     }
 
     const phValues = items
@@ -343,6 +384,7 @@ export async function getSoil(
 
       observedAt,
       isMock: false,
+      dataStatus: "ok",
     };
   } catch (error) {
     return mockSoilWithReason(

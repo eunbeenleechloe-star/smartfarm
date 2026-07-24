@@ -10,9 +10,10 @@ import CropSelector from "@/components/CropSelector";
 import FertilizerCard from "@/components/FertilizerCard";
 import GrowthStageSelect from "@/components/GrowthStageSelect";
 import LoadingSteps from "@/components/LoadingSteps";
-import LocationInput from "@/components/LocationInput";
+import LocationInput, { type LegalDistrictSelection } from "@/components/LocationInput";
 import MetricCard from "@/components/MetricCard";
 import CropPestsSection from "@/components/pests/CropPestsSection";
+import FarmReportSection, { type FarmReportStatus } from "@/components/FarmReportSection";
 import RiskCard from "@/components/RiskCard";
 import ScoreGauge from "@/components/ScoreGauge";
 import SoilCard from "@/components/SoilCard";
@@ -21,7 +22,9 @@ import StatusBadge, { severityLabel, severityToTone } from "@/components/StatusB
 import { cropResearchStandards } from "@/data/cropResearchStandards";
 import { getHighestSeverity, type CropRiskItem } from "@/lib/cropRiskAnalyzer";
 import type { CropAnalysisResult } from "@/services/cropAnalysis";
-import type { AnalysisInput, CropId, RiskSeverity } from "@/types/analysis";
+import type { AnalysisInput, CropId, LocationInput as LocationInputData, RiskSeverity } from "@/types/analysis";
+import type { CropPestsResponse } from "@/types/cropPests";
+import type { FarmAnalysisReport } from "@/types/farmReport";
 
 type RequestStatus = "idle" | "loading" | "error" | "success";
 
@@ -59,11 +62,29 @@ async function requestAnalysis(input: AnalysisInput): Promise<CropAnalysisResult
   return data as CropAnalysisResult;
 }
 
+async function requestFarmReport(
+  analysis: CropAnalysisResult,
+  pests: CropPestsResponse | null,
+): Promise<FarmAnalysisReport> {
+  const res = await fetch("/api/analysis-report", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ analysis, pests }),
+  });
+
+  if (!res.ok) {
+    throw new Error("AI 리포트를 불러오지 못했습니다.");
+  }
+  const data = await res.json();
+  return data.report as FarmAnalysisReport;
+}
+
 export default function AnalyzeClient() {
   const searchParams = useSearchParams();
   const prefillApplied = useRef(false);
 
   const [address, setAddress] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState<LegalDistrictSelection | null>(null);
   const [cropId, setCropId] = useState<CropId | null>(null);
   const [growthStage, setGrowthStage] = useState("");
   const [areaM2, setAreaM2] = useState("");
@@ -71,22 +92,53 @@ export default function AnalyzeClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [result, setResult] = useState<CropAnalysisResult | null>(null);
   const [validationMessage, setValidationMessage] = useState<string | null>(null);
+  const [pestsData, setPestsData] = useState<CropPestsResponse | null>(null);
+  const [reportStatus, setReportStatus] = useState<FarmReportStatus>("idle");
+  const [report, setReport] = useState<FarmAnalysisReport | null>(null);
 
+  // overrides.address가 있으면 랜딩 페이지 딥링크(prefill) 경로다 — 법정동 후보 선택 없이
+  // 기존 방식대로 주소 문자열만으로 분석한다(기존 UX 유지). 그 외(수동 폼 제출)는 반드시
+  // 전국 법정동 검색에서 선택된 stdgCode를 사용한다(버튼 자체도 미선택 시 비활성화됨).
   async function handleAnalyze(overrides?: { address?: string; cropId?: CropId | null }) {
-    const targetAddress = overrides?.address ?? address;
+    const isPrefill = overrides?.address !== undefined;
     const targetCropId = overrides?.cropId ?? cropId;
 
-    if (!targetAddress.trim() || !targetCropId) {
-      setValidationMessage("지역과 작물을 모두 선택해주세요.");
-      return;
+    let location: LocationInputData;
+
+    if (isPrefill) {
+      const targetAddress = overrides?.address ?? "";
+      if (!targetAddress.trim() || !targetCropId) {
+        setValidationMessage("지역과 작물을 모두 선택해주세요.");
+        return;
+      }
+      location = { address: targetAddress.trim() };
+    } else {
+      if (!selectedRegion || !address.trim() || !targetCropId) {
+        setValidationMessage("지역과 작물을 모두 선택해주세요.");
+        return;
+      }
+      location = {
+        address: address.trim(),
+        stdgCode: selectedRegion.code,
+        ...(selectedRegion.nx !== null && selectedRegion.ny !== null
+          ? { nx: selectedRegion.nx, ny: selectedRegion.ny }
+          : {}),
+        ...(selectedRegion.weatherGridPrecision
+          ? { weatherGridPrecision: selectedRegion.weatherGridPrecision }
+          : {}),
+      };
     }
+
     setValidationMessage(null);
     setStatus("loading");
     setErrorMessage(null);
+    setPestsData(null);
+    setReport(null);
+    setReportStatus("idle");
 
     try {
       const data = await requestAnalysis({
-        location: { address: targetAddress.trim() },
+        location,
         crop: targetCropId,
         growthStage: growthStage || undefined,
         areaM2: areaM2 ? Number(areaM2) : undefined,
@@ -98,6 +150,30 @@ export default function AnalyzeClient() {
       setStatus("error");
     }
   }
+
+  // 병해충 데이터는 CropPestsSection이 이미 받아온 결과를 그대로 전달받을 뿐, 여기서
+  // /api/crop-pests를 다시 호출하지 않는다(NCPMS 중복 호출 방지).
+  async function generateReport(analysisOverride?: CropAnalysisResult) {
+    const targetAnalysis = analysisOverride ?? result;
+    if (!targetAnalysis) return;
+
+    setReportStatus("loading");
+    try {
+      const generated = await requestFarmReport(targetAnalysis, pestsData);
+      setReport(generated);
+      setReportStatus("success");
+    } catch {
+      setReportStatus("error");
+    }
+  }
+
+  // 분석이 성공하면(기존 결과 화면은 그대로 유지한 채) 별도로 AI 리포트를 비동기 생성한다.
+  // 이 시점에 병해충이 아직 로딩 중이면 pests=null로 생성되고, 이후 "다시 생성"으로 보완할 수 있다.
+  useEffect(() => {
+    if (!result) return;
+    void generateReport(result);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [result]);
 
   // 랜딩 페이지의 위치/작물 입력에서 넘어온 경우 값을 채워 넣고 바로 실제 분석을 실행한다
   // (더미 결과가 아니라 /api/analyze를 그대로 호출한다).
@@ -137,7 +213,12 @@ export default function AnalyzeClient() {
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <div className="grid gap-6 sm:grid-cols-2">
-          <LocationInput value={address} onChange={setAddress} />
+          <LocationInput
+            value={address}
+            onChange={setAddress}
+            selectedCode={selectedRegion?.code ?? null}
+            onSelectCode={(selection) => setSelectedRegion(selection)}
+          />
           <GrowthStageSelect cropId={cropId} value={growthStage} onChange={setGrowthStage} />
         </div>
 
@@ -163,7 +244,11 @@ export default function AnalyzeClient() {
         {validationMessage && <p className="mt-4 text-sm text-status-danger">{validationMessage}</p>}
 
         <div className="mt-6 max-w-xs">
-          <AnalyzeButton onClick={() => handleAnalyze()} loading={status === "loading"} />
+          <AnalyzeButton
+            onClick={() => handleAnalyze()}
+            loading={status === "loading"}
+            disabled={!selectedRegion || !cropId}
+          />
         </div>
       </section>
 
@@ -196,6 +281,13 @@ export default function AnalyzeClient() {
               {growthStage ? ` · ${growthStage}` : ""}
             </p>
           </section>
+
+          {/* 1-1. AI 맞춤 재배 리포트 */}
+          <FarmReportSection
+            status={reportStatus}
+            report={report}
+            onRegenerate={() => void generateReport()}
+          />
 
           {/* 2. 주요 위험 */}
           <section>
@@ -260,7 +352,7 @@ export default function AnalyzeClient() {
           </section>
 
           {/* 7. 병해충 정보 */}
-          <CropPestsSection cropId={result.cropId} />
+          <CropPestsSection cropId={result.cropId} onResult={setPestsData} />
         </div>
       )}
     </main>
