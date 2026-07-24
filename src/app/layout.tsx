@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Gaegu } from "next/font/google";
+import { Black_Han_Sans, Gaegu } from "next/font/google";
 import type { ReactNode } from "react";
 import Navbar from "@/components/landing/Navbar";
 import "./globals.css";
@@ -8,6 +8,13 @@ const gaegu = Gaegu({
   weight: ["400", "700"],
   subsets: ["latin"],
   variable: "--font-gaegu",
+  display: "swap",
+});
+
+const blackHanSans = Black_Han_Sans({
+  weight: ["400"],
+  subsets: ["latin"],
+  variable: "--font-black-han-sans",
   display: "swap",
 });
 
@@ -22,7 +29,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="ko" className={gaegu.variable}>
+    <html lang="ko" className={`${gaegu.variable} ${blackHanSans.variable}`}>
       <head>
         <link
           rel="stylesheet"
