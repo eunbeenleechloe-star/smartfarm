@@ -38,7 +38,7 @@ export default function FeaturesSection() {
       <div className="mx-auto max-w-[1200px]">
         <div className="flex flex-col gap-10 sm:flex-row sm:items-start sm:justify-between">
           <ScrollReveal className="max-w-xs">
-            <h2 className="font-display text-3xl font-bold text-white">
+            <h2 className="text-3xl font-bold text-white">
               우리 서비스가
               <br />
               다루는 위험요소들

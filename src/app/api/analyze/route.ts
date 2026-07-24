@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { analyzeFarm } from "@/services/analyze";
 import type { AnalysisInput } from "@/types/analysis";

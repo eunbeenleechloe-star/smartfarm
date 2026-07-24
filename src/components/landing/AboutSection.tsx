@@ -18,7 +18,7 @@ export default function AboutSection() {
           />
 
           <div>
-            <h2 className="font-display text-3xl font-bold text-white">
+            <h2 className="text-3xl font-bold text-white">
               내 지역의 토양과 앞으로의 날씨를 분석해,
               <br />
               작물 재배 위험을 미리 알려드립니다

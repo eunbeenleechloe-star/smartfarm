@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: #f7f5ef;
+  --color-background: #eef6ea;
   --color-card: #ffffff;
   --color-primary: #2f5233;
   --color-primary-light: #4a7c3a;
@@ -22,9 +22,9 @@
 
   --color-dark: #1e3a2e;
   --color-dark-card: #24462f;
-  --color-accent: #f0b429;
+  --color-accent: #84cc16;
 
-  --font-sans: var(--font-gaegu), "Pretendard", "Noto Sans KR", system-ui, sans-serif;
+  --font-sans: "Pretendard", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
   --font-display: var(--font-gaegu), "Pretendard", "Noto Sans KR", system-ui, sans-serif;
 }
 

@@ -42,7 +42,7 @@ export default function ChatWidget() {
       {open && (
         <div className="mb-3 w-80 rounded-2xl border border-border bg-card shadow-xl">
           <div className="flex items-center justify-between rounded-t-2xl bg-primary px-4 py-3">
-            <span className="text-sm font-semibold text-white">팜가드 도우미</span>
+            <span className="text-sm font-semibold text-white">흙기사 도우미</span>
             <button
               type="button"
               onClick={() => setOpen(false)}

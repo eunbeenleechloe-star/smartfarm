@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Gaegu } from "next/font/google";
 import type { ReactNode } from "react";
+import Navbar from "@/components/landing/Navbar";
 import "./globals.css";
 
 const gaegu = Gaegu({
@@ -11,8 +12,8 @@ const gaegu = Gaegu({
 });
 
 export const metadata: Metadata = {
-  title: "팜가드 - 농사 리스크 가이드",
-  description: "내 지역의 토양과 앞으로의 날씨를 분석해, 작물 재배 위험을 미리 알려주는 AI 농업 가이드",
+  title: "흙기사 - 농사 리스크 가이드",
+  description: "시작부터 수확까지, 내 땅을 지키는 든든한 기사",
 };
 
 export default function RootLayout({
@@ -29,7 +30,10 @@ export default function RootLayout({
           href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.css"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <Navbar />
+        {children}
+      </body>
     </html>
   );
 }

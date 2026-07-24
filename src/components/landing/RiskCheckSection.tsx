@@ -5,6 +5,7 @@ import { useState } from "react";
 import CropSelector from "@/components/CropSelector";
 import LocationInput from "@/components/LocationInput";
 import ScrollReveal from "@/components/landing/ScrollReveal";
+import { addHistoryEntry } from "@/lib/history";
 import type { CropId } from "@/types/analysis";
 
 /**
@@ -23,6 +24,7 @@ export default function RiskCheckSection() {
       return;
     }
     setValidationMessage(null);
+    addHistoryEntry({ cropId, address: address.trim() });
     const params = new URLSearchParams({ address: address.trim(), crop: cropId });
     router.push(`/analyze?${params.toString()}`);
   }
@@ -31,7 +33,7 @@ export default function RiskCheckSection() {
     <section id="input" className="bg-background px-4 py-24 sm:px-6">
       <div className="mx-auto max-w-[1200px]">
         <ScrollReveal>
-          <h2 className="font-display text-3xl font-bold text-text">내 땅에 이 작물, 괜찮을까요?</h2>
+          <h2 className="text-3xl font-bold text-text">내 땅에 이 작물, 괜찮을까요?</h2>
           <p className="mt-2 text-muted">
             지역과 작물을 선택하면 실제 분석 결과 화면으로 이동합니다.
           </p>
@@ -51,8 +53,16 @@ export default function RiskCheckSection() {
             </div>
           </div>
 
-          <div className="mt-6">
-            <CropSelector value={cropId} onChange={setCropId} />
+          <div className="mt-6 flex flex-wrap items-end justify-between gap-6">
+            <div className="min-w-[240px] flex-1">
+              <CropSelector value={cropId} onChange={setCropId} />
+            </div>
+            <img
+              src="/images/farmer-crop.png"
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none hidden w-24 select-none sm:block"
+            />
           </div>
 
           {validationMessage && <p className="mt-4 text-sm text-status-danger">{validationMessage}</p>}

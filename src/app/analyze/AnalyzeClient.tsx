@@ -124,7 +124,7 @@ export default function AnalyzeClient() {
   const cropName = result ? cropResearchStandards[result.cropId].name : "";
 
   return (
-    <main className="mx-auto max-w-[1200px] px-4 py-10 sm:px-6">
+    <main className="mx-auto max-w-[1200px] px-4 pt-32 pb-10 sm:px-6">
       <header className="mb-8">
         <Link href="/" className="text-sm text-muted hover:text-primary">
           ← 홈으로
