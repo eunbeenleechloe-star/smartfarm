@@ -25,7 +25,7 @@ export default function Navbar() {
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-border bg-white shadow-sm">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-5 sm:px-6">
-        <a href="/#hero" className="font-display text-2xl font-bold text-primary sm:text-3xl">
+        <a href="/#hero" className="font-title text-2xl font-bold text-primary sm:text-3xl">
           흙기사
         </a>
         <ul className="hidden gap-6 text-sm font-medium text-text sm:flex">

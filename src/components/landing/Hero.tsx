@@ -27,20 +27,20 @@ export default function Hero() {
           내 땅을 지키는 든든한 기사
         </motion.h1>
 
+        <motion.p
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
+          className="mt-6 max-w-xl text-lg text-muted"
+        >
+          농사를 위한 가장 빠르고 든든한 지원군
+        </motion.p>
+
         <img
           src="/images/mascot-knight-cow.png"
           alt="흙기사 마스코트 캐릭터"
           className="mx-auto mt-8 w-40 select-none sm:w-48"
         />
-
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-          className="mt-8 max-w-xl text-lg text-muted"
-        >
-          농사를 위한 가장 빠르고 든든한 지원군
-        </motion.p>
 
         <motion.div
           initial={{ opacity: 0 }}
