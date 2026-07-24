@@ -8,6 +8,7 @@ import AnalyzeButton from "@/components/AnalyzeButton";
 import ConfidenceCard from "@/components/ConfidenceCard";
 import CropSelector from "@/components/CropSelector";
 import FertilizerCard from "@/components/FertilizerCard";
+import ForecastRiskAlert from "@/components/ForecastRiskAlert";
 import GrowthStageSelect from "@/components/GrowthStageSelect";
 import LoadingSteps from "@/components/LoadingSteps";
 import LocationInput, { type LegalDistrictSelection } from "@/components/LocationInput";
@@ -297,6 +298,9 @@ export default function AnalyzeClient() {
             </p>
           </section>
 
+          {/* 1-0. 예보 기반 주의(핵심 차별점 강조) — sortedRisks는 이미 severity 기준 정렬됨 */}
+          <ForecastRiskAlert risks={sortedRisks} />
+
           {/* 1-1. AI 맞춤 재배 리포트 */}
           <FarmReportSection
             status={reportStatus}
@@ -360,6 +364,7 @@ export default function AnalyzeClient() {
               dataQuality={result.dataQuality}
             />
             <SourceList
+              cropId={result.cropId}
               sources={result.sources}
               generatedAt={result.generatedAt}
               dataQuality={result.dataQuality}

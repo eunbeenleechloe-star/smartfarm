@@ -1,5 +1,15 @@
 import { DATA_LEVEL_LABELS } from "@/components/dataLevelLabels";
+import { cropStandardSources } from "@/data/cropStandardSources";
 import type { CropDataQuality } from "@/services/cropAnalysis";
+import type { CropId } from "@/types/analysis";
+
+const SCORED_FIELD_LABELS: Record<string, string> = {
+  temperature: "기온",
+  ph: "pH",
+  ec: "EC",
+  texture: "토성",
+  rainfall: "강수량",
+};
 
 function formatObservedAt(generatedAt: string): string {
   const date = new Date(generatedAt);
@@ -8,14 +18,17 @@ function formatObservedAt(generatedAt: string): string {
 }
 
 export default function SourceList({
+  cropId,
   sources,
   generatedAt,
   dataQuality,
 }: {
+  cropId: CropId;
   sources: string[];
   generatedAt: string;
   dataQuality: CropDataQuality;
 }) {
+  const standardSources = cropStandardSources[cropId];
   const usesMockData =
     dataQuality.weatherIsMock || dataQuality.soilIsMock || dataQuality.fertilizerIsFallback === true;
 
@@ -62,6 +75,33 @@ export default function SourceList({
           </dd>
         </div>
       </dl>
+
+      <div className="mt-4 border-t border-border pt-4">
+        <h4 className="text-sm font-semibold text-text">작물 기준값 출처</h4>
+        <ul className="mt-2 space-y-2 text-xs">
+          {standardSources.map((entry) => (
+            <li key={entry.field} className="flex items-start justify-between gap-3">
+              <div>
+                <span className="font-medium text-text">
+                  {SCORED_FIELD_LABELS[entry.field] ?? entry.field}
+                </span>
+                <span className="ml-2 text-muted">
+                  {entry.verified ? entry.sourceName : (entry.note ?? "출처 검증 중")}
+                </span>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                  entry.verified
+                    ? "bg-status-good-bg text-status-good"
+                    : "bg-status-caution-bg text-status-caution"
+                }`}
+              >
+                {entry.verified ? "출처 확인됨" : "출처 검증 중"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
