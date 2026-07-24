@@ -5,35 +5,24 @@ import ScrollReveal from "@/components/landing/ScrollReveal";
 
 type ChatMessage = { from: "user" | "ai"; text: string };
 
-const FAQ_ANSWERS: { keywords: string[]; answer: string }[] = [
-  {
-    keywords: ["적합도", "점수"],
-    answer:
-      "적합도 점수는 기온·pH·EC·토성·강수량 실측값을 작물별 공식 생육 기준과 비교해 계산돼요. 결측 항목은 0점이 아니라 평가에서 제외돼요.",
-  },
-  {
-    keywords: ["비료", "시비", "처방"],
-    answer:
-      "비료 처방은 농촌진흥청 등 공식 자료 또는 API 값만 사용해요. 실제 살포량은 토양검정 결과와 재배면적에 따라 달라질 수 있으니 참고용으로 봐주세요.",
-  },
-  {
-    keywords: ["위험", "리스크", "날씨", "기상"],
-    answer:
-      "단기예보를 기반으로 저온·고온·집중강우·과습 같은 위험 요소를 분석해서 알려드려요. 자세한 내용은 위쪽 '위험분석' 영역에서 지역과 작물을 선택해보세요.",
-  },
-  {
-    keywords: ["mock", "목", "가짜", "임시"],
-    answer:
-      "실제 공공 API 응답을 받지 못했을 때만 임시(mock) 데이터를 사용하고, 그 경우 결과 화면에 mock 여부를 그대로 표시해요.",
-  },
-];
+const ERROR_MESSAGE = "잠시 후 다시 시도해주세요.";
 
-function buildAnswer(question: string): string {
-  const matched = FAQ_ANSWERS.find((item) =>
-    item.keywords.some((keyword) => question.includes(keyword))
-  );
-  if (matched) return matched.answer;
-  return "아직 정확히 답변드리기 어려운 질문이에요. '위험분석' 결과 화면의 데이터 출처와 설명을 함께 참고해주세요.";
+async function fetchAiReply(question: string): Promise<string> {
+  const res = await fetch("/api/ai-chat", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ question }),
+  });
+
+  if (!res.ok) {
+    throw new Error(`ai-chat 요청 실패: HTTP ${res.status}`);
+  }
+
+  const data = (await res.json()) as { reply?: string };
+  if (!data.reply) {
+    throw new Error("ai-chat 응답에 답변이 없습니다.");
+  }
+  return data.reply;
 }
 
 export default function AiChatSection() {
@@ -41,18 +30,26 @@ export default function AiChatSection() {
     { from: "ai", text: "안녕하세요, 무엇이든 물어보세요!" },
   ]);
   const [input, setInput] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  function handleSubmit(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const question = input.trim();
-    if (!question) return;
+    if (!question || isLoading) return;
 
-    setMessages((prev) => [
-      ...prev,
-      { from: "user", text: question },
-      { from: "ai", text: buildAnswer(question) },
-    ]);
+    setMessages((prev) => [...prev, { from: "user", text: question }]);
     setInput("");
+    setIsLoading(true);
+
+    try {
+      const reply = await fetchAiReply(question);
+      setMessages((prev) => [...prev, { from: "ai", text: reply }]);
+    } catch (error) {
+      console.error("[AiChatSection] Gemini 응답 실패:", error);
+      setMessages((prev) => [...prev, { from: "ai", text: ERROR_MESSAGE }]);
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -80,6 +77,11 @@ export default function AiChatSection() {
                 {message.text}
               </div>
             ))}
+            {isLoading && (
+              <div className="max-w-[75%] rounded-2xl bg-status-info-bg px-4 py-2.5 text-sm leading-relaxed text-text">
+                답변을 생각하고 있어요...
+              </div>
+            )}
           </div>
 
           <form
@@ -91,11 +93,13 @@ export default function AiChatSection() {
               value={input}
               onChange={(event) => setInput(event.target.value)}
               placeholder="예: 비료 처방은 어떻게 계산되나요?"
-              className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm text-text outline-none focus:border-primary"
+              disabled={isLoading}
+              className="flex-1 rounded-full border border-border bg-background px-4 py-2.5 text-sm text-text outline-none focus:border-primary disabled:opacity-60"
             />
             <button
               type="submit"
-              className="shrink-0 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90"
+              disabled={isLoading}
+              className="shrink-0 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90 disabled:opacity-60"
             >
               전송
             </button>

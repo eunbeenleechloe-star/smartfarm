@@ -5,19 +5,19 @@
  * 적합도 점수 → 위험 → AI 리포트)과 무관하다.
  */
 const NAV_ITEMS = [
-  { href: "/#hero", label: "홈" },
-  { href: "/#about", label: "서비스소개" },
-  { href: "/#input", label: "위험분석" },
-  { href: "/#features", label: "가이드" },
+  { href: "/", label: "홈" },
+  { href: "/guide", label: "서비스소개" },
+  { href: "/risk", label: "위험분석" },
+  { href: "/guide#features", label: "가이드" },
   { href: "/ai-chat", label: "AI 농사 상담" },
-  { href: "/#contact", label: "문의" },
+  { href: "/contact", label: "문의" },
 ];
 
 export default function Navbar() {
   return (
     <nav className="fixed inset-x-0 top-0 z-50 border-b border-border bg-white shadow-sm">
       <div className="mx-auto flex max-w-[1200px] items-center justify-between px-4 py-5 sm:px-6">
-        <a href="/#hero" className="font-title text-2xl font-bold text-primary sm:text-3xl">
+        <a href="/" className="text-2xl font-bold text-primary sm:text-3xl">
           흙기사
         </a>
         <ul className="hidden gap-6 text-sm font-medium text-text sm:flex">

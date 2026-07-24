@@ -1,9 +1,9 @@
 import ScrollReveal from "@/components/landing/ScrollReveal";
 
 const QUICK_LINKS = [
-  { href: "#input", label: "위험 분석" },
+  { href: "/risk", label: "위험 분석" },
   { href: "#features", label: "작물 가이드" },
-  { href: "#footer", label: "데이터 출처" },
+  { href: "/data-sources", label: "데이터 출처" },
 ];
 
 export default function AboutSection() {
@@ -29,7 +29,7 @@ export default function AboutSection() {
               않고 평가에서 제외된 항목으로 그대로 알려드립니다.
             </p>
             <a
-              href="#input"
+              href="/risk"
               className="mt-6 inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-primary hover:opacity-90"
             >
               자세히 보기

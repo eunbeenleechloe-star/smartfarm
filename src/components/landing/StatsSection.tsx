@@ -36,7 +36,7 @@ export default function StatsSection() {
               {STATS.map((stat) => (
                 <div key={stat.label}>
                   <div className="text-4xl font-bold text-primary">{stat.value}</div>
-                  <div className="mt-1 text-xs leading-relaxed text-muted">{stat.label}</div>
+                  <div className="mt-1 text-base leading-relaxed text-muted">{stat.label}</div>
                 </div>
               ))}
             </div>

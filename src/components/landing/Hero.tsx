@@ -2,72 +2,77 @@
 
 import { motion } from "framer-motion";
 
+const MENU_LINKS = [
+  { href: "/risk", label: "위험 분석" },
+  { href: "/guide", label: "작물 가이드" },
+  { href: "/data-sources", label: "데이터 출처" },
+];
+
 export default function Hero() {
   return (
-    <section
-      id="hero"
-      className="relative overflow-hidden bg-gradient-to-b from-[#e2f3d8] via-background to-background px-4 pt-32 pb-24 sm:px-6"
-    >
-      <span
-        aria-hidden="true"
-        className="pointer-events-none absolute -right-16 -top-10 select-none font-display text-[14rem] font-bold leading-none text-primary-light/10 sm:text-[20rem]"
-      >
-        FARM
-      </span>
+    <section id="hero" className="px-4 pb-16 pt-32 sm:px-6">
+      <div className="mx-auto max-w-[1200px] overflow-hidden rounded-[2.5rem] bg-dark p-6 sm:p-12">
+        <div className="grid items-center gap-8 sm:grid-cols-2 sm:gap-12">
+          <motion.img
+            initial={{ opacity: 0, x: -24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            src="/images/hero-knight-silhouette.png"
+            alt="흙기사 실루엣"
+            className="h-64 w-full object-contain sm:h-[26rem]"
+          />
 
-      <div className="relative mx-auto max-w-[1200px]">
-        <motion.h1
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="max-w-3xl text-4xl font-bold leading-[1.15] text-text sm:text-6xl"
-        >
-          시작부터 수확까지
-          <br />
-          내 땅을 지키는 든든한 기사
-        </motion.h1>
+          <div>
+            <motion.h1
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="text-4xl font-bold leading-[1.15] text-white sm:text-6xl"
+            >
+              시작부터 수확까지
+              <br />
+              내 땅을 지키는
+              <br />
+              든든한 기사
+            </motion.h1>
 
-        <motion.p
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, delay: 0.15, ease: "easeOut" }}
-          className="mt-6 max-w-xl text-lg text-muted"
-        >
-          농사를 위한 가장 빠르고 든든한 지원군
-        </motion.p>
+            <motion.p
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+              className="mt-4 text-lg text-white/70 sm:text-3xl"
+            >
+              농사를 위한 가장 빠르고 든든한 지원군
+            </motion.p>
 
-        <img
-          src="/images/mascot-knight-cow.png"
-          alt="흙기사 마스코트 캐릭터"
-          className="mx-auto mt-8 w-40 select-none sm:w-48"
-        />
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
+              className="mt-8"
+            >
+              <a
+                href="/risk"
+                className="inline-flex items-center rounded-full bg-white px-8 py-4 text-base font-semibold text-primary hover:opacity-90 sm:text-lg"
+              >
+                자세히 보기
+              </a>
 
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.7, delay: 0.3 }}
-          className="mt-10"
-        >
-          <a
-            href="#input"
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 text-sm font-semibold text-white hover:opacity-90"
-          >
-            내 지역 위험 확인하기
-          </a>
-        </motion.div>
+              <div className="mt-6 flex flex-wrap gap-3">
+                {MENU_LINKS.map((link) => (
+                  <a
+                    key={link.href}
+                    href={link.href}
+                    className="rounded-full border border-white/30 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10"
+                  >
+                    {link.label}
+                  </a>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        </div>
       </div>
-
-      <motion.a
-        href="#input"
-        aria-label="아래로 스크롤"
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 text-primary"
-        animate={{ y: [0, 8, 0] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-      >
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-          <path d="M12 4v16m0 0-6-6m6 6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-        </svg>
-      </motion.a>
     </section>
   );
 }

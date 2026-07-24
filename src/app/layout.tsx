@@ -1,22 +1,7 @@
 import type { Metadata } from "next";
-import { Black_Han_Sans, Gaegu } from "next/font/google";
 import type { ReactNode } from "react";
 import Navbar from "@/components/landing/Navbar";
 import "./globals.css";
-
-const gaegu = Gaegu({
-  weight: ["400", "700"],
-  subsets: ["latin"],
-  variable: "--font-gaegu",
-  display: "swap",
-});
-
-const blackHanSans = Black_Han_Sans({
-  weight: ["400"],
-  subsets: ["latin"],
-  variable: "--font-black-han-sans",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "흙기사 - 농사 리스크 가이드",
@@ -29,7 +14,7 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="ko" className={`${gaegu.variable} ${blackHanSans.variable}`}>
+    <html lang="ko">
       <head>
         <link
           rel="stylesheet"
