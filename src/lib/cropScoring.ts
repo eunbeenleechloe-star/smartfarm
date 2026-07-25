@@ -75,11 +75,32 @@ export interface CropScoringWeights {
  * EC 가중치가 0인 작물(배, 감자)은 EC 기준값 존재 여부와 무관하게 항상 평가에서 제외된다.
  */
 export const cropScoringWeights: Record<CropId, CropScoringWeights> = {
-  apple: { temperature: 35, ph: 15, texture: 25, rainfall: 15, ec: 10 },
+  apple: {
+    temperature: 35,
+    ph: 15,
+    texture: 25,
+    // 강수량 기준값(cropStandards)이 null이므로 런타임에서 자동 제외됨. 오이=시설·관수 재배로 자연강수량 미적용. 기준값 확정 시 이 가중치가 활성화됨.
+    rainfall: 15,
+    ec: 10,
+  },
   pear: { temperature: 40, ph: 15, texture: 30, rainfall: 15, ec: 0 },
   potato: { temperature: 30, ph: 15, texture: 30, rainfall: 25, ec: 0 },
-  cucumber: { temperature: 30, ph: 10, texture: 20, rainfall: 30, ec: 10 },
-  lettuce: { temperature: 35, ph: 20, texture: 10, rainfall: 15, ec: 20 },
+  cucumber: {
+    temperature: 30,
+    ph: 10,
+    texture: 20,
+    // 강수량 기준값(cropStandards)이 null이므로 런타임에서 자동 제외됨. 오이=시설·관수 재배로 자연강수량 미적용. 기준값 확정 시 이 가중치가 활성화됨.
+    rainfall: 30,
+    ec: 10,
+  },
+  lettuce: {
+    temperature: 35,
+    ph: 20,
+    texture: 10,
+    // 강수량 기준값(cropStandards)이 null이므로 런타임에서 자동 제외됨. 오이=시설·관수 재배로 자연강수량 미적용. 기준값 확정 시 이 가중치가 활성화됨.
+    rainfall: 15,
+    ec: 20,
+  },
 };
 
 function sumWeights(weights: CropScoringWeights): number {

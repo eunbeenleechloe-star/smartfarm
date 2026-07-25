@@ -36,10 +36,19 @@ function formatTarget(target: string | string[] | null, unit: string): string {
   return unit ? `${target}${unit}` : target;
 }
 
+const RAINFALL_FOOTNOTE =
+  "※ 강수량은 연간·생육기 표준 대비 참고 지표이며, 단기예보 강수량과 적용 기간이 다를 수 있습니다.";
+
 export default function MetricCard({ detail }: { detail: ScoreDetail }) {
   const label = FIELD_LABELS[detail.field] ?? detail.field;
   const unit = FIELD_UNITS[detail.field] ?? "";
   const excluded = detail.score === null;
+
+  // 이 작물은 강수량 기준값이 없어 평가에서 제외된 경우다(cropScoring.ts가 결정).
+  // 해당 작물에서는 강수량이 실제로 쓰이지 않으므로 카드 자체를 표시하지 않는다.
+  if (detail.field === "rainfall" && excluded) {
+    return null;
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
@@ -68,6 +77,10 @@ export default function MetricCard({ detail }: { detail: ScoreDetail }) {
       </dl>
 
       <p className="mt-2 text-xs text-muted">{detail.reason}</p>
+
+      {detail.field === "rainfall" && !excluded && (
+        <p className="mt-2 text-xs text-muted">{RAINFALL_FOOTNOTE}</p>
+      )}
     </div>
   );
 }

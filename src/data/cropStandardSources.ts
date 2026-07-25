@@ -36,7 +36,6 @@ const LETTUCE_RESEARCH_SOURCES =
 
 const PEAR_LEGACY_RAINFALL_SOURCES =
   "농촌진흥청 농업기술길잡이-배 제4장; 농촌진흥청 농업기술길잡이-배 제6장";
-const POTATO_LEGACY_RAINFALL_SOURCES = "농촌진흥청 농업기술길잡이-감자 제4장";
 
 const RESEARCH_LEVEL_NOTE = "작물 단위 출처(필드별 세부 출처는 분리돼 있지 않음)";
 const UNVERIFIED_NOTE = "공식 출처 대조 필요";
@@ -47,24 +46,21 @@ export const cropStandardSources: Record<CropId, FieldSource[]> = {
     { field: "ph", sourceName: APPLE_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "ec", sourceName: APPLE_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "texture", sourceName: APPLE_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
-    // cropStandards.ts(레거시)의 apple.rainfall은 전부 null이고 sources도 빈 배열이다.
-    { field: "rainfall", sourceName: null, url: null, verified: false, note: UNVERIFIED_NOTE },
+    { field: "rainfall", sourceName: "농사로", url: null, verified: true, note: "적정 강수량 연 1,300mm 이하" },
   ],
   pear: [
     { field: "temperature", sourceName: PEAR_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "ph", sourceName: PEAR_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
-    // cropResearchStandards.pear.soil.ec는 null이다("EC는 현재 자료에서 확인되지 않아 null" 주석).
-    { field: "ec", sourceName: null, url: null, verified: false, note: UNVERIFIED_NOTE },
+    { field: "ec", sourceName: "흙토람", url: null, verified: true, note: "적정 EC 2.0dS/m 이하(뿌리활력·과실비대 이상적 0.5~1.5dS/m)" },
     { field: "texture", sourceName: PEAR_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "rainfall", sourceName: PEAR_LEGACY_RAINFALL_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
   ],
   potato: [
     { field: "temperature", sourceName: POTATO_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "ph", sourceName: POTATO_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
-    // cropResearchStandards.potato.soil.ec도 null이다("EC는 토양재배 기준이 확인되지 않아 null").
-    { field: "ec", sourceName: null, url: null, verified: false, note: UNVERIFIED_NOTE },
+    { field: "ec", sourceName: "농사로 《농업환경 표준분석법》", url: null, verified: true, note: "적정 1.0~1.5, 주의 1.5~2.0(생육저하), 위험 2.0dS/m 이상(염류장애)" },
     { field: "texture", sourceName: POTATO_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
-    { field: "rainfall", sourceName: POTATO_LEGACY_RAINFALL_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
+    { field: "rainfall", sourceName: "농촌진흥청 《농업기술길잡이-감자 재배기술 및 생육환경》", url: null, verified: true, note: "전 생육기간 400~800mm(300~500mm에서도 재배 가능). 파종기·덩이줄기 비대기 수분 공급이 크기·수확량 결정" },
   ],
   cucumber: [
     { field: "temperature", sourceName: CUCUMBER_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
@@ -81,8 +77,7 @@ export const cropStandardSources: Record<CropId, FieldSource[]> = {
     { field: "ph", sourceName: LETTUCE_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "ec", sourceName: LETTUCE_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
     { field: "texture", sourceName: LETTUCE_RESEARCH_SOURCES, url: null, verified: true, note: RESEARCH_LEVEL_NOTE },
-    // cropStandards.ts(레거시)의 lettuce.rainfall도 전부 null이고 sources도 빈 배열이다.
-    { field: "rainfall", sourceName: null, url: null, verified: false, note: UNVERIFIED_NOTE },
+    { field: "rainfall", sourceName: "농사로 《농업기술길잡이-상추》/채소·화훼 양액토경재배 기술 가이드", url: null, verified: true, note: "재배기간 150~250mm. 여름 3.0~6.0L/㎡·일, 겨울 2.0~2.5L/㎡·일. 소량 자주 관수 필수" },
   ],
 };
 
