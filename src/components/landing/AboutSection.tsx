@@ -1,18 +1,12 @@
 import ScrollReveal from "@/components/landing/ScrollReveal";
 
-const QUICK_LINKS = [
-  { href: "/risk", label: "위험 분석" },
-  { href: "#features", label: "작물 가이드" },
-  { href: "/data-sources", label: "데이터 출처" },
-];
-
 export default function AboutSection() {
   return (
     <section id="about" className="bg-background px-4 py-24 sm:px-6">
       <div className="mx-auto max-w-[1200px]">
         <ScrollReveal className="grid items-center gap-10 overflow-hidden rounded-3xl bg-primary p-8 sm:grid-cols-2 sm:p-12">
           <img
-            src="https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=900&q=80"
+            src="/images/farmland-field.jpg"
             alt="농경지 전경"
             className="h-64 w-full rounded-2xl object-cover sm:h-80"
           />
@@ -34,18 +28,6 @@ export default function AboutSection() {
             >
               자세히 보기
             </a>
-
-            <div className="mt-8 flex flex-wrap gap-3">
-              {QUICK_LINKS.map((link) => (
-                <a
-                  key={link.href}
-                  href={link.href}
-                  className="rounded-full border border-white/40 px-4 py-1.5 text-xs font-medium text-white hover:bg-white/10"
-                >
-                  {link.label}
-                </a>
-              ))}
-            </div>
           </div>
         </ScrollReveal>
       </div>

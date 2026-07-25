@@ -27,7 +27,7 @@ export default function ContactSection() {
           <img
             src="/images/contact-agent.png"
             alt="상담원 안내 일러스트"
-            className="h-64 w-full rounded-2xl object-cover sm:h-72"
+            className="h-72 w-full rounded-2xl object-contain sm:h-96"
           />
         </ScrollReveal>
       </div>
