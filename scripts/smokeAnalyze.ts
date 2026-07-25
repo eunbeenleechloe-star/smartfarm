@@ -81,6 +81,7 @@ interface CaseRow {
   region: string;
   outcome: CaseOutcome;
   overallScore: number | string;
+  confidenceScore: number | string;
   weatherScore: number | string;
   soilScore: number | string;
   risks: number | string;
@@ -168,6 +169,7 @@ async function runCase(cropId: CropId, region: ResolvedRegion): Promise<CaseRow>
       region: region.label,
       outcome: "region-not-found",
       overallScore: "-",
+      confidenceScore: "-",
       weatherScore: "-",
       soilScore: "-",
       risks: "-",
@@ -201,6 +203,7 @@ async function runCase(cropId: CropId, region: ResolvedRegion): Promise<CaseRow>
       region: region.label,
       outcome: isTimeout ? "analyze-timeout" : "analyze-failed",
       overallScore: "-",
+      confidenceScore: "-",
       weatherScore: "-",
       soilScore: "-",
       risks: "-",
@@ -229,6 +232,7 @@ async function runCase(cropId: CropId, region: ResolvedRegion): Promise<CaseRow>
       region: region.label,
       outcome: "report-failed",
       overallScore: analysis.overallScore,
+      confidenceScore: analysis.confidenceScore,
       weatherScore,
       soilScore,
       risks: analysis.risks.length,
@@ -245,6 +249,7 @@ async function runCase(cropId: CropId, region: ResolvedRegion): Promise<CaseRow>
     region: region.label,
     outcome: "ok",
     overallScore: analysis.overallScore,
+    confidenceScore: analysis.confidenceScore,
     weatherScore,
     soilScore,
     risks: analysis.risks.length,
@@ -306,6 +311,7 @@ async function main() {
       지역: row.region,
       상태: row.outcome,
       종합점수: row.overallScore,
+      신뢰도: row.confidenceScore,
       "기상점수*": row.weatherScore,
       "토양점수*": row.soilScore,
       위험수: row.risks,

@@ -38,6 +38,14 @@ export interface ScoreDetail {
   actual: number | string | null;
   target: string | string[] | null;
   reason: string;
+  /**
+   * score가 null(평가 제외)일 때만 의미가 있다.
+   * "design": 가중치 0이거나 이 작물의 공식 기준값 자체가 없어(예: 오이 강수량) 애초에
+   * 평가 대상이 아닌 항목 — 데이터 부족이 아니므로 신뢰도 계산 분모에서 빠져야 한다.
+   * "missingData": 평가 대상은 맞지만 이번 조회에서 실측값이 없어 제외된 항목 — 신뢰도
+   * 감점 대상이다. (cropAnalysis.ts의 calculateConfidenceScore가 이 구분을 사용한다.)
+   */
+  excludedReason?: "design" | "missingData";
 }
 
 export interface ScoreResult {
@@ -230,11 +238,13 @@ function makeRangeResult(
         actual,
         target: formatRangeTarget(range),
         reason: "이 작물에서는 민감도가 낮아(가중치 0) 이 항목을 평가에서 제외합니다.",
+        excludedReason: "design",
       },
     };
   }
 
   const score = calculateRangeScore(actual, range.min, range.max);
+  const hasStandard = range.min !== null && range.max !== null;
   return {
     field,
     weight,
@@ -244,6 +254,7 @@ function makeRangeResult(
       actual,
       target: formatRangeTarget(range),
       reason: rangeReason(actual, range, score),
+      excludedReason: score !== null ? undefined : hasStandard ? "missingData" : "design",
     },
   };
 }
@@ -293,11 +304,13 @@ function makeTextureResult(
         actual,
         target: preferredTextures.length > 0 ? preferredTextures : null,
         reason: "이 작물에서는 민감도가 낮아(가중치 0) 이 항목을 평가에서 제외합니다.",
+        excludedReason: "design",
       },
     };
   }
 
   const score = calculateTextureScore(actual, preferredTextures);
+  const hasStandard = preferredTextures.length > 0;
   return {
     field: "texture",
     weight,
@@ -307,6 +320,7 @@ function makeTextureResult(
       actual,
       target: preferredTextures.length > 0 ? preferredTextures : null,
       reason: textureReason(actual, preferredTextures, score),
+      excludedReason: score !== null ? undefined : hasStandard ? "missingData" : "design",
     },
   };
 }

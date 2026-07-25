@@ -124,6 +124,11 @@ function clampConfidence(value: number): number {
  * 결측 필드 수(점수 계산에서 제외된 항목)와 데이터 출처 수준(mock 여부, 표본 데이터 여부)을
  * 이용해 confidenceScore(0~100)를 계산한다.
  * 실측값이 많고 실데이터(비-mock, parcel/district 수준)일수록 점수가 높다.
+ *
+ * details 중 excludedReason이 "design"인 항목(가중치 0인 EC, 공식 기준값 자체가 없는
+ * 강수량 등)은 이 작물에서 애초에 평가하지 않기로 한 설계 결정이지 데이터 부족이 아니므로
+ * 분모(evaluableFields)에서 뺀다. 실측값이 없어 제외된("missingData") 항목만 분모에 포함해
+ * 감점 대상으로 삼는다 — 그래야 모든 데이터가 갖춰졌을 때 작물과 무관하게 100%가 나온다.
  */
 function calculateConfidenceScore(
   cropScoreResult: ScoreResult,
@@ -131,9 +136,12 @@ function calculateConfidenceScore(
   soil: SoilData,
   fertilizer: FertilizerPrescription | null,
 ): number {
-  const totalFields = cropScoreResult.details.length;
-  const availableFields = totalFields - cropScoreResult.excludedFields.length;
-  const baseConfidence = totalFields > 0 ? (availableFields / totalFields) * 100 : 0;
+  const evaluableDetails = cropScoreResult.details.filter(
+    (detail) => detail.excludedReason !== "design",
+  );
+  const evaluableFields = evaluableDetails.length;
+  const scoredFields = evaluableDetails.filter((detail) => detail.score !== null).length;
+  const baseConfidence = evaluableFields > 0 ? (scoredFields / evaluableFields) * 100 : 0;
 
   const sourcePenalty =
     (weather.isMock ? 20 : 0) +
