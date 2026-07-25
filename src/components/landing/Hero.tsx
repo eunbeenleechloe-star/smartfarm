@@ -66,9 +66,9 @@ export default function Hero() {
             initial={{ opacity: 0, x: 24 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            src="/images/hero-knight-silhouette.png"
+            src="/images/hero-knight-shovel-transparent.png"
             alt="흙기사 실루엣"
-            className="h-64 w-full object-contain sm:h-[26rem]"
+            className="mx-auto h-64 w-auto max-w-full object-contain sm:h-[26rem]"
           />
         </div>
       </div>
