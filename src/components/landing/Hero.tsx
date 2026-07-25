@@ -13,27 +13,17 @@ export default function Hero() {
     <section id="hero" className="px-4 pb-16 pt-32 sm:px-6">
       <div className="mx-auto max-w-[1200px] overflow-hidden rounded-[2.5rem] bg-dark p-6 sm:p-12">
         <div className="grid items-center gap-8 sm:grid-cols-2 sm:gap-12">
-          <motion.img
-            initial={{ opacity: 0, x: -24 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
-            src="/images/hero-knight-silhouette.png"
-            alt="흙기사 실루엣"
-            className="h-64 w-full object-contain sm:h-[26rem]"
-          />
-
           <div>
             <motion.h1
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, ease: "easeOut" }}
-              className="text-4xl font-bold leading-[1.15] text-white sm:text-6xl"
+              className="font-bold leading-[1.15] text-white"
             >
-              시작부터 수확까지
-              <br />
-              내 땅을 지키는
-              <br />
-              든든한 기사
+              <span className="block text-4xl sm:text-6xl">시작부터 수확까지</span>
+              <span className="mt-2 block text-2xl sm:text-4xl">
+                내 땅을 지키는 든든한 기사
+              </span>
             </motion.h1>
 
             <motion.p
@@ -71,6 +61,15 @@ export default function Hero() {
               </div>
             </motion.div>
           </div>
+
+          <motion.img
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            src="/images/hero-knight-silhouette.png"
+            alt="흙기사 실루엣"
+            className="h-64 w-full object-contain sm:h-[26rem]"
+          />
         </div>
       </div>
     </section>
