@@ -229,7 +229,24 @@ export default function AnalyzeClient() {
             onSelectCode={(selection) => setSelectedRegion(selection)}
             onParcelChange={setParcel}
           />
-          <GrowthStageSelect cropId={cropId} value={growthStage} onChange={setGrowthStage} />
+          <div className="space-y-6">
+            <GrowthStageSelect cropId={cropId} value={growthStage} onChange={setGrowthStage} />
+
+            <div className="max-w-xs">
+              <label htmlFor="area-m2" className="mb-2 block text-sm font-medium text-text">
+                재배 면적 (㎡, 선택)
+              </label>
+              <input
+                id="area-m2"
+                type="number"
+                min={0}
+                value={areaM2}
+                onChange={(event) => setAreaM2(event.target.value)}
+                placeholder="예: 1000"
+                className="w-full rounded-xl border border-border bg-card px-4 py-3 text-text placeholder:text-muted focus:border-primary focus:outline-none"
+              />
+            </div>
+          </div>
         </div>
 
         <p className="mt-3 text-sm text-muted">
@@ -240,21 +257,6 @@ export default function AnalyzeClient() {
 
         <div className="mt-6">
           <CropSelector value={cropId} onChange={setCropId} />
-        </div>
-
-        <div className="mt-6 max-w-xs">
-          <label htmlFor="area-m2" className="mb-2 block text-sm font-medium text-text">
-            재배 면적 (㎡, 선택)
-          </label>
-          <input
-            id="area-m2"
-            type="number"
-            min={0}
-            value={areaM2}
-            onChange={(event) => setAreaM2(event.target.value)}
-            placeholder="예: 1000"
-            className="w-full rounded-xl border border-border bg-card px-4 py-3 text-text placeholder:text-muted focus:border-primary focus:outline-none"
-          />
         </div>
 
         {validationMessage && <p className="mt-4 text-sm text-status-danger">{validationMessage}</p>}
