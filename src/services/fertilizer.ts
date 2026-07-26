@@ -8,6 +8,7 @@ import {
   fetchPublicApiXml,
   firstEnv,
   isNoDataResult,
+  maskedKeyPreview,
   normalizeServiceKey,
   parseFloatOrNull,
   parseXmlItems,
@@ -179,9 +180,14 @@ export async function getFertilizer(
     );
   }
 
+  const normalizedKey = normalizeServiceKey(serviceKey);
+  console.log(
+    `[fertilizer] FERTILIZER_API_KEY 로드됨: ${maskedKeyPreview(normalizedKey)}`,
+  );
+
   try {
     const rate = await fetchStandardFertilizerRate(
-      normalizeServiceKey(serviceKey),
+      normalizedKey,
       cropCode,
     );
 
