@@ -8,6 +8,7 @@ import {
   fetchPublicApiXml,
   firstEnv,
   kstParts,
+  maskedKeyPreview,
   normalizeServiceKey,
   pad2,
   parseFloatOrNull,
@@ -459,6 +460,10 @@ export async function getWeather(
   try {
     const normalizedKey =
       normalizeServiceKey(serviceKey);
+
+    console.log(
+      `[weather] KMA_API_KEY/WEATHER_API_KEY 로드됨: ${maskedKeyPreview(normalizedKey)}`,
+    );
 
     const items =
       await fetchVilageFcst(

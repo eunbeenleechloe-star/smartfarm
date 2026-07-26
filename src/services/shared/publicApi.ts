@@ -6,6 +6,20 @@
 export class PublicApiError extends Error {}
 
 /**
+ * data.go.kr 계열 API는 응답이 없을 때 네트워크 오류(reject)조차 내지 않고 그냥 무한 대기하는
+ * 경우가 있다(2026-07 실호출로 확인). fetch()는 브라우저/Node 어느 쪽도 기본 타임아웃이 없어서,
+ * 이 경우 호출부의 try/catch가 아예 발동하지 않고 analyzeFarm() 전체가 멈춘다. 그래서 모든
+ * 공공데이터 호출에 AbortController 타임아웃을 강제한다.
+ */
+const DEFAULT_TIMEOUT_MS = 15000;
+
+/** 값 전체를 로그에 남기지 않고 앞 4자리만 노출해 "환경변수가 실제로 로드됐는지"만 확인한다. */
+export function maskedKeyPreview(value: string): string {
+  if (value.length <= 4) return `${value}... (length: ${value.length})`;
+  return `${value.slice(0, 4)}... (length: ${value.length})`;
+}
+
+/**
  * data.go.kr serviceKey는 이미 percent-encoding된 상태로 발급된다.
  * URLSearchParams에 그대로 넣으면 다시 인코딩되어 이중 인코딩(auth 실패)이 발생하므로,
  * 한 번 decode한 뒤 URLSearchParams가 인코딩을 한 번만 하도록 만든다.
@@ -48,12 +62,28 @@ function buildUrl(
   return `${baseUrl}?${usp.toString()}`;
 }
 
+async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { signal: controller.signal });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new PublicApiError(`공공데이터 API 응답 시간 초과(${timeoutMs}ms)`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
 export async function fetchPublicApiJson(
   baseUrl: string,
   params: Record<string, string | number | undefined>,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<unknown> {
   const url = buildUrl(baseUrl, params);
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, timeoutMs);
   if (!res.ok) {
     throw new PublicApiError(`공공데이터 API HTTP 오류: ${res.status} ${res.statusText}`);
   }
@@ -63,9 +93,10 @@ export async function fetchPublicApiJson(
 export async function fetchPublicApiXml(
   baseUrl: string,
   params: Record<string, string | number | undefined>,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS,
 ): Promise<string> {
   const url = buildUrl(baseUrl, params);
-  const res = await fetch(url);
+  const res = await fetchWithTimeout(url, timeoutMs);
   if (!res.ok) {
     throw new PublicApiError(`공공데이터 API HTTP 오류: ${res.status} ${res.statusText}`);
   }

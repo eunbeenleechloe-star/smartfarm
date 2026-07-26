@@ -1,4 +1,5 @@
 import { getRequiredEnv } from "./env";
+import { maskedKeyPreview } from "./shared/publicApi";
 import { ncpmsHtmlToLines } from "@/lib/sanitizeNcpmsHtml";
 import { cropResearchStandards } from "@/data/cropResearchStandards";
 import type { CropAnalysisResult } from "@/services/cropAnalysis";
@@ -488,6 +489,7 @@ interface GeminiGenerateContentResponse {
 
 async function callGeminiForReport(context: LlmContext): Promise<RawReportFields> {
   const apiKey = getRequiredEnv("GEMINI_API_KEY");
+  console.log(`[farmReport] GEMINI_API_KEY 로드됨: ${maskedKeyPreview(apiKey)}`);
 
   const userMessage =
     `<analysis_data>\n${JSON.stringify(context)}\n</analysis_data>\n\n` +

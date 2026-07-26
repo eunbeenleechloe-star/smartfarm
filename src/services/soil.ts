@@ -4,6 +4,7 @@ import {
   fetchPublicApiXml,
   firstEnv,
   isNoDataResult,
+  maskedKeyPreview,
   normalizeServiceKey,
   parseFloatOrNull,
   parseXmlItems,
@@ -297,6 +298,9 @@ async function resolveChemistry(
   }
 
   const normalizedKey = normalizeServiceKey(serviceKey);
+  console.log(
+    `[soil] SOIL_API_KEY/SOIL_CHEMISTRY_API_KEY/SOIL_MAP_DETAIL_API_KEY 로드됨(화학성): ${maskedKeyPreview(normalizedKey)}`,
+  );
 
   try {
     const items = await deps.fetchSoilExamList(normalizedKey, stdgCode);
@@ -406,6 +410,9 @@ async function resolveParcel(
   }
 
   const normalizedKey = normalizeServiceKey(characteristicsKey);
+  console.log(
+    `[soil] SOIL_MAP_DETAIL_API_KEY/SOIL_API_KEY/SOIL_CHEMISTRY_API_KEY 로드됨(필지): ${maskedKeyPreview(normalizedKey)}`,
+  );
 
   try {
     const charac = await deps.fetchSoilCharacByPnu(normalizedKey, pnu);

@@ -55,16 +55,32 @@ function buildSummarySentence(cropName: string, topRisk: CropRiskItem | undefine
   return `${cropName} 재배 환경은 대체로 적합하지만, ${topRisk.title}에 주의해야 합니다.`;
 }
 
+const ANALYZE_REQUEST_TIMEOUT_MS = 15000;
+
 async function requestAnalysis(input: AnalysisInput): Promise<CropAnalysisResult> {
-  const res = await fetch("/api/analyze", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ANALYZE_REQUEST_TIMEOUT_MS);
+
+  let res: Response;
+  try {
+    res = await fetch("/api/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new Error(`분석 응답이 ${ANALYZE_REQUEST_TIMEOUT_MS / 1000}초 안에 오지 않았습니다. 다시 시도해주세요.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 
   const data = await res.json();
   if (!res.ok) {
-    throw new Error(data.message ?? "분석 중 오류가 발생했습니다.");
+    throw new Error(data.message ?? `분석 중 오류가 발생했습니다. (HTTP ${res.status})`);
   }
   return data as CropAnalysisResult;
 }
@@ -159,6 +175,10 @@ export default function AnalyzeClient() {
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "분석 중 오류가 발생했습니다.");
       setStatus("error");
+    } finally {
+      // try/catch가 상태를 못 바꾸는 예기치 못한 경로에 대비한 안전장치 —
+      // 로딩 스피너가 절대 "loading"에 멈춰 있지 않도록 보장한다.
+      setStatus((prev) => (prev === "loading" ? "error" : prev));
     }
   }
 
