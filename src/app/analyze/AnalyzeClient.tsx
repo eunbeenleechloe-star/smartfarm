@@ -89,6 +89,7 @@ async function requestFarmReport(
 export default function AnalyzeClient() {
   const searchParams = useSearchParams();
   const prefillApplied = useRef(false);
+  const lastAttempt = useRef<{ address?: string; cropId?: CropId | null } | undefined>(undefined);
 
   const [address, setAddress] = useState("");
   const [selectedRegion, setSelectedRegion] = useState<LegalDistrictSelection | null>(null);
@@ -108,6 +109,7 @@ export default function AnalyzeClient() {
   // 기존 방식대로 주소 문자열만으로 분석한다(기존 UX 유지). 그 외(수동 폼 제출)는 반드시
   // 전국 법정동 검색에서 선택된 stdgCode를 사용한다(버튼 자체도 미선택 시 비활성화됨).
   async function handleAnalyze(overrides?: { address?: string; cropId?: CropId | null }) {
+    lastAttempt.current = overrides;
     const isPrefill = overrides?.address !== undefined;
     const targetCropId = overrides?.cropId ?? cropId;
 
@@ -279,8 +281,15 @@ export default function AnalyzeClient() {
       )}
 
       {status === "error" && errorMessage && (
-        <section className="mt-8 rounded-xl border border-status-danger bg-status-danger-bg p-4 text-sm text-status-danger">
-          {errorMessage}
+        <section className="mt-8 flex items-center justify-between gap-4 rounded-xl border border-status-danger bg-status-danger-bg p-4 text-sm text-status-danger">
+          <span>{errorMessage} 입력값을 확인한 뒤 다시 시도해주세요.</span>
+          <button
+            type="button"
+            onClick={() => void handleAnalyze(lastAttempt.current)}
+            className="shrink-0 rounded-full border border-status-danger px-4 py-1.5 font-medium hover:bg-status-danger hover:text-white"
+          >
+            다시 시도
+          </button>
         </section>
       )}
 
