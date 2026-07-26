@@ -35,7 +35,7 @@ export default function MyPage() {
 
               {history.length === 0 ? (
                 <p className="mt-8 text-sm text-muted">
-                  아직 조회한 작물 데이터가 없어요. 위험분석을 먼저 이용해보세요.
+                  아직 조회한 작물 데이터가 없어요. 적합도 진단을 먼저 이용해보세요.
                 </p>
               ) : (
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
