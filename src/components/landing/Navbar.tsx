@@ -7,7 +7,7 @@
 const NAV_ITEMS = [
   { href: "/", label: "홈" },
   { href: "/guide", label: "서비스소개" },
-  { href: "/risk", label: "위험분석" },
+  { href: "/analyze", label: "위험분석" },
   { href: "/guide#features", label: "가이드" },
   { href: "/ai-chat", label: "AI 농사 상담" },
   { href: "/contact", label: "문의" },

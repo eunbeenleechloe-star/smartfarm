@@ -45,7 +45,7 @@ export default function Hero() {
               className="mt-8"
             >
               <a
-                href="/risk"
+                href="/analyze"
                 className="inline-flex items-center rounded-full bg-white px-8 py-4 text-base font-semibold text-primary hover:opacity-90 sm:text-lg"
               >
                 적합도 진단하기

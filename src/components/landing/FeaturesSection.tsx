@@ -75,7 +75,7 @@ export default function FeaturesSection() {
                 <h3 className="mt-4 text-base font-semibold text-white">{feature.title}</h3>
                 <p className="mt-2 text-sm text-white/70">{feature.description}</p>
                 <a
-                  href="/risk"
+                  href="/analyze"
                   className="mt-4 inline-block text-sm font-medium text-accent hover:underline"
                 >
                   자세히 보기 →

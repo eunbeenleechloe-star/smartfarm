@@ -23,7 +23,7 @@ export default function AboutSection() {
               않고 평가에서 제외된 항목으로 그대로 알려드립니다.
             </p>
             <a
-              href="/risk"
+              href="/analyze"
               className="mt-6 inline-flex items-center rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-primary hover:opacity-90"
             >
               자세히 보기

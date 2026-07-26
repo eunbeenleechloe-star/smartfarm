@@ -222,13 +222,21 @@ export default function AnalyzeClient() {
 
       <section className="rounded-2xl border border-border bg-card p-6">
         <div className="grid gap-6 sm:grid-cols-2">
-          <LocationInput
-            value={address}
-            onChange={setAddress}
-            selectedCode={selectedRegion?.code ?? null}
-            onSelectCode={(selection) => setSelectedRegion(selection)}
-            onParcelChange={setParcel}
-          />
+          <div>
+            <LocationInput
+              value={address}
+              onChange={setAddress}
+              selectedCode={selectedRegion?.code ?? null}
+              onSelectCode={(selection) => setSelectedRegion(selection)}
+              onParcelChange={setParcel}
+            />
+
+            <p className="mt-3 text-sm text-muted">
+              {parcel
+                ? "지번을 입력했으니 토성, 배수 상태, 유효토심까지 함께 확인해요."
+                : "지역의 최근 날씨와 토양검정 자료를 바탕으로 분석해요."}
+            </p>
+          </div>
           <div className="space-y-6">
             <GrowthStageSelect cropId={cropId} value={growthStage} onChange={setGrowthStage} />
 
@@ -246,28 +254,22 @@ export default function AnalyzeClient() {
                 className="w-full rounded-xl border border-border bg-card px-4 py-3 text-text placeholder:text-muted focus:border-primary focus:outline-none"
               />
             </div>
+
+            <div className="max-w-xs">
+              <AnalyzeButton
+                onClick={() => handleAnalyze()}
+                loading={status === "loading"}
+                disabled={!selectedRegion || !cropId}
+              />
+            </div>
           </div>
         </div>
-
-        <p className="mt-3 text-sm text-muted">
-          {parcel
-            ? "지번을 입력했으니 토성, 배수 상태, 유효토심까지 함께 확인해요."
-            : "지역의 최근 날씨와 토양검정 자료를 바탕으로 분석해요."}
-        </p>
 
         <div className="mt-6">
           <CropSelector value={cropId} onChange={setCropId} />
         </div>
 
         {validationMessage && <p className="mt-4 text-sm text-status-danger">{validationMessage}</p>}
-
-        <div className="mt-6 max-w-xs">
-          <AnalyzeButton
-            onClick={() => handleAnalyze()}
-            loading={status === "loading"}
-            disabled={!selectedRegion || !cropId}
-          />
-        </div>
       </section>
 
       {status === "loading" && (
